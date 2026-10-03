@@ -14,7 +14,11 @@ jobs:
       - uses: pnpm/action-setup@v4
         with: { version: 10.15.0 }
       - uses: actions/setup-node@v4
-        with: { node-version: 22 }
+        with:
+          node-version: 22
+          cache: pnpm
       - run: pnpm install --no-frozen-lockfile
+      - run: pnpm --filter @doctor/api prisma:validate
+      - run: pnpm --filter @doctor/api prisma:generate
       - run: pnpm typecheck
       - run: pnpm build
