@@ -1,38 +1,6 @@
 {
-  "name": "@doctor/api",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "build": "nest build",
-    "dev": "nest start --watch",
-    "start": "node dist/main.js",
-    "typecheck": "tsc --noEmit",
-    "test": "jest --runInBand",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
-  },
-  "dependencies": {
-    "@nestjs/common": "^11.1.6",
-    "@nestjs/config": "^4.0.2",
-    "@nestjs/core": "^11.1.6",
-    "@nestjs/jwt": "^11.0.0",
-    "@nestjs/platform-express": "^11.1.6",
-    "@nestjs/swagger": "^11.2.0",
-    "@nestjs/throttler": "^6.4.0",
-    "@prisma/client": "^6.16.2",
-    "argon2": "^0.41.1",
-    "class-transformer": "^0.5.1",
-    "class-validator": "^0.14.2",
-    "helmet": "^8.1.0",
-    "otplib": "^12.0.1"
-  },
-  "devDependencies": {
-    "@nestjs/cli": "^11.0.10",
-    "@nestjs/schematics": "^11.0.7",
-    "@nestjs/testing": "^11.1.6",
-    "@types/express": "^5.0.3",
-    "prisma": "^6.16.2",
-    "ts-jest": "^29.4.5",
-    "typescript": "^5.9.2"
-  }
+  "name":"@doctor/api","version":"0.1.0","private":true,
+  "scripts":{"build":"nest build","dev":"nest start --watch","start":"node dist/main.js","typecheck":"tsc --noEmit","test":"jest --runInBand","prisma:generate":"prisma generate","prisma:migrate":"prisma migrate dev"},
+  "dependencies":{"@nestjs/common":"^11.1.6","@nestjs/config":"^4.0.2","@nestjs/core":"^11.1.6","@nestjs/jwt":"^11.0.0","@nestjs/platform-express":"^11.1.6","@nestjs/swagger":"^11.2.0","@nestjs/throttler":"^6.4.0","@prisma/client":"^6.16.2","argon2":"^0.41.1","class-transformer":"^0.5.1","class-validator":"^0.14.2","helmet":"^8.1.0","otplib":"^12.0.1"},
+  "devDependencies":{"@nestjs/cli":"^11.0.10","@nestjs/schematics":"^11.0.7","@nestjs/testing":"^11.1.6","@types/express":"^5.0.3","prisma":"^6.16.2","ts-jest":"^29.4.5","typescript":"^5.9.2"}
 }
