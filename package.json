@@ -1,0 +1,1 @@
+{"name":"doctor-platform","private":true,"packageManager":"pnpm@10.15.0","scripts":{"dev":"pnpm --parallel --filter @doctor/api --filter @doctor/web dev","build":"pnpm -r build","test":"pnpm -r test","typecheck":"pnpm -r typecheck","db:generate":"pnpm --filter @doctor/api prisma:generate","db:migrate":"pnpm --filter @doctor/api prisma:migrate"},"engines":{"node":">=22"}}
