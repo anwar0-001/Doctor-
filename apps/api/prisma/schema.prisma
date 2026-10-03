@@ -335,7 +335,6 @@ languages DoctorLanguage[]
 services DoctorService[]
 availabilities Availability[]
 availabilityExceptions AvailabilityException[]
-appointments Appointment[]
 waitlist Waitlist[]
 payouts DoctorPayout[]
  reviewsReceived Review[]
@@ -409,6 +408,7 @@ model DoctorService {
  active Boolean @default(true)
  doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Cascade)
  waitlists Waitlist[]
+ appointments Appointment[]
 @@index([doctorId,active])
 }
 model Availability {
