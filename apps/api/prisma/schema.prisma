@@ -1,4 +1,6 @@
-generator client { provider = "prisma-client-js" }
+generator client {
+ provider = "prisma-client-js"
+}
 datasource db { provider = "postgresql" url = env("DATABASE_URL") }
 enum UserStatus { ACTIVE SUSPENDED BANNED DELETED }
 enum UserRole { PATIENT DOCTOR MODERATOR SUPPORT FINANCE ADMIN SUPER_ADMIN }
@@ -7,6 +9,8 @@ enum AppointmentStatus { PENDING CONFIRMED IN_PROGRESS COMPLETED CANCELLED REFUN
 enum PaymentStatus { PENDING SUCCEEDED FAILED REFUNDED PARTIALLY_REFUNDED DISPUTED }
 enum VerificationDocumentType { GOVERNMENT_ID LICENSE_PROOF DEGREE CERTIFICATE OTHER }
 enum LicenseStatus { PENDING VERIFIED EXPIRED REJECTED SUSPENDED }
+enum AvailabilityExceptionType { HOLIDAY LEAVE BLOCKED }
+enum WaitlistStatus { WAITING NOTIFIED BOOKED CANCELLED EXPIRED }
 
 model User {
  id String @id @default(uuid()) @db.Uuid
@@ -48,6 +52,8 @@ model RefreshSession {
  revokedAt DateTime?
  revokeReason String?
  replacedBySessionId String? @db.Uuid
+ userAgent String?
+ ipAddress String?
  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
  @@index([userId,revokedAt,expiresAt])
 }
@@ -146,6 +152,10 @@ model DoctorProfile {
  licenses MedicalLicense[]
  languages DoctorLanguage[]
  services DoctorService[]
+ availabilities Availability[]
+ availabilityExceptions AvailabilityException[]
+ appointments Appointment[]
+ waitlist Waitlist[]
  @@index([status,specialtyId,countryId,cityId])
  @@index([status,ratingAvg])
 }
@@ -209,10 +219,40 @@ model DoctorService {
  durationMinutes Int
  price Decimal @db.Decimal(12,2)
  currency String
+ bufferBeforeMinutes Int @default(0)
+ bufferAfterMinutes Int @default(0)
+ minimumNoticeMinutes Int @default(60)
+ cancellationWindowMinutes Int @default(1440)
  active Boolean @default(true)
  doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Cascade)
  appointments Appointment[]
  @@index([doctorId,active])
+}
+model Availability {
+ id String @id @default(uuid()) @db.Uuid
+ doctorId String @db.Uuid
+ dayOfWeek Int
+ startLocal String
+ endLocal String
+ timezone String?
+ active Boolean @default(true)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Cascade)
+ @@index([doctorId,dayOfWeek,active])
+}
+model AvailabilityException {
+ id String @id @default(uuid()) @db.Uuid
+ doctorId String @db.Uuid
+ type AvailabilityExceptionType
+ startsAt DateTime
+ endsAt DateTime
+ allDay Boolean @default(true)
+ reason String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Cascade)
+ @@index([doctorId,startsAt,endsAt])
 }
 model Appointment {
  id String @id @default(uuid()) @db.Uuid
@@ -223,14 +263,37 @@ model Appointment {
  endsAt DateTime
  patientTimezone String
  status AppointmentStatus @default(PENDING)
+ idempotencyKey String?
+ cancellationReason String?
+ cancelledAt DateTime?
  createdAt DateTime @default(now())
  updatedAt DateTime @updatedAt
  patient User @relation("PatientAppointments",fields:[patientId],references:[id])
  doctor User @relation("DoctorAppointments",fields:[doctorId],references:[id])
+ doctorProfile DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Restrict)
  service DoctorService @relation(fields:[serviceId],references:[id])
  transactions Transaction[]
+ @@unique([patientId,idempotencyKey])
  @@index([doctorId,startsAt,status])
+ @@index([doctorId,endsAt,status])
  @@index([patientId,startsAt,status])
+}
+model Waitlist {
+ id String @id @default(uuid()) @db.Uuid
+ patientId String @db.Uuid
+ doctorId String @db.Uuid
+ serviceId String @db.Uuid
+ preferredStartsAt DateTime?
+ preferredEndsAt DateTime?
+ timezone String
+ status WaitlistStatus @default(WAITING)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ patient User @relation(fields:[patientId],references:[id],onDelete:Cascade)
+ doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Cascade)
+ service DoctorService @relation(fields:[serviceId],references:[id],onDelete:Restrict)
+ @@index([doctorId,status,createdAt])
+ @@index([patientId,status])
 }
 model Transaction {
  id String @id @default(uuid()) @db.Uuid

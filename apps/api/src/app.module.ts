@@ -5,6 +5,7 @@ import { ThrottlerGuard,ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { DoctorsModule } from './doctors/doctors.module';
+import { CalendarModule } from './calendar/calendar.module';
 import { HealthController } from './health.controller';
-@Module({imports:[ConfigModule.forRoot({isGlobal:true,cache:true}),ThrottlerModule.forRoot([{name:'default',ttl:60000,limit:60}]),PrismaModule,AuthModule,DoctorsModule],controllers:[HealthController],providers:[{provide:APP_GUARD,useClass:ThrottlerGuard}]})
+@Module({imports:[ConfigModule.forRoot({isGlobal:true,cache:true}),ThrottlerModule.forRoot([{name:'default',ttl:60000,limit:60}]),PrismaModule,AuthModule,DoctorsModule,CalendarModule],controllers:[HealthController],providers:[{provide:APP_GUARD,useClass:ThrottlerGuard}]})
 export class AppModule {}
