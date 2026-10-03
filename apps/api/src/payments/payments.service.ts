@@ -4,7 +4,7 @@ import { AppointmentStatus, DoctorStatus, PaymentStatus } from '@prisma/client';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 
-type StripeResponse={id:string;client_secret?:string;status?:string;url?:string;account?:string;details_submitted?:boolean;charges?:{data?:Array<{id:string}>}};
+type StripeResponse={id:string;client_secret?:string;status?:string;url?:string;account?:string;details_submitted?:boolean;charges?:{data?:Array<{id:string}>};amount?:number};
 @Injectable()
 export class PaymentsService {
  constructor(private readonly prisma:PrismaService,private readonly config:ConfigService){}
@@ -23,10 +23,10 @@ export class PaymentsService {
   return {accountId,url:link.url};
  }
  async createPaymentIntent(userId:string,appointmentId:string){
-  const a=await this.prisma.appointment.findUnique({where:{id:appointmentId},include:{service:true,doctorProfile:true}});
+  const a=await this.prisma.appointment.findUnique({where:{id:appointmentId},include:{service:true}});
   if(!a||a.patientId!==userId) throw new NotFoundException('Appointment not found');
   if(a.status!==AppointmentStatus.PENDING) throw new ConflictException('Appointment is not payable');
-  if(a.doctorProfile.status!==DoctorStatus.VERIFIED||!a.doctorProfile.stripeAccountId||!a.doctorProfile.stripeOnboardingComplete) throw new ConflictException('Doctor payout account is not ready');
+  const doctor=await this.prisma.doctorProfile.findUnique({where:{userId:a.doctorId}}); if(!doctor||doctor.status!==DoctorStatus.VERIFIED||!doctor.stripeAccountId||!doctor.stripeOnboardingComplete) throw new ConflictException('Doctor payout account is not ready');
   const existing=await this.prisma.transaction.findFirst({where:{appointmentId,status:PaymentStatus.PENDING},orderBy:{createdAt:'desc'}});
   if(existing?.providerClientSecret&&existing.providerTransactionId) return {transactionId:existing.id,paymentIntentId:existing.providerTransactionId,clientSecret:existing.providerClientSecret};
   const fee=await this.prisma.platformFeeConfig.findFirst({where:{active:true},orderBy:{effectiveFrom:'desc'}});
@@ -36,7 +36,7 @@ export class PaymentsService {
   if(!Number.isSafeInteger(minor)||!Number.isSafeInteger(applicationFee)||minor<=0) throw new BadRequestException('Invalid payment amount');
   const tx=await this.prisma.transaction.create({data:{appointmentId,userId,provider:'stripe',currency:a.service.currency.toLowerCase(),consultationAmount:amount,patientPlatformFee:patientFee,doctorPlatformFee:doctorFee,doctorNet,platformRevenue,feeSnapshot:{patientPercent:String(fee.patientPercent),doctorPercent:String(fee.doctorPercent),monthlyDoctorPercent:String(fee.monthlyDoctorPercent),feeConfigId:fee.id}}});
   try{
-   const intent=await this.stripe('payment_intents','POST',{amount:minor,currency:a.service.currency.toLowerCase(),payment_method_types:['card'],application_fee_amount:applicationFee,'transfer_data[destination]':a.doctorProfile.stripeAccountId,'metadata[transactionId]':tx.id,'metadata[appointmentId]':appointmentId});
+   const intent=await this.stripe('payment_intents','POST',{amount:minor,currency:a.service.currency.toLowerCase(),payment_method_types:['card'],application_fee_amount:applicationFee,'transfer_data[destination]':doctor.stripeAccountId,'metadata[transactionId]':tx.id,'metadata[appointmentId]':appointmentId});
    const expanded=await this.stripe('payment_intents/'+intent.id+'?expand[]=latest_charge','GET'); const feeId=typeof (expanded as any)?.latest_charge?.application_fee==='string' ? (expanded as any).latest_charge.application_fee : (expanded as any)?.latest_charge?.application_fee?.id; const updated=await this.prisma.transaction.update({where:{id:tx.id},data:{providerTransactionId:intent.id,providerClientSecret:intent.client_secret,providerFeeId:feeId}});
    return {transactionId:updated.id,paymentIntentId:intent.id,clientSecret:intent.client_secret};
   }catch(e){await this.prisma.transaction.update({where:{id:tx.id},data:{status:PaymentStatus.FAILED}});throw e;}
