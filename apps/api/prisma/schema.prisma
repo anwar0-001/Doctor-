@@ -408,22 +408,7 @@ model DoctorService {
  cancellationWindowMinutes Int @default(1440)
  active Boolean @default(true)
  doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Cascade)
-@@index([doctorId,active])
-}
-model DoctorService {
- id String @id @default(uuid())
- doctorId String @db.Uuid
- name String
- consultationType String
- durationMinutes Int
- price Decimal @db.Decimal(12,2)
- currency String
- bufferBeforeMinutes Int @default(0)
- bufferAfterMinutes Int @default(0)
- minimumNoticeMinutes Int @default(60)
- cancellationWindowMinutes Int @default(1440)
- active Boolean @default(true)
- doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Cascade)
+ waitlists Waitlist[]
 @@index([doctorId,active])
 }
 model Availability {
