@@ -17,7 +17,7 @@ export class MessagingService {
  async listConversations(userId:string){return this.prisma.conversation.findMany({where:{OR:[{patientId:userId},{doctorId:userId}]},include:{patient:{select:{id:true,email:true}},doctor:{select:{id:true,email:true,doctor:{select:{displayName:true}}}},_count:{select:{messages:true}}},orderBy:{lastMessageAt:'desc'}});}
  async messages(userId:string,id:string,cursor?:string){
   await this.conversationForUser(id,userId); const rows=await this.prisma.message.findMany({where:{conversationId:id,...(cursor?{createdAt:{lt:new Date(cursor)}}:{})},include:{sender:{select:{id:true}},attachments:{include:{document:true}},reads:true},orderBy:{createdAt:'desc'},take:50});
-  return rows.map(m=>({...m,text:m.encryptedContent&&m.nonce&&m.authTag?this.crypto.decrypt(m.encryptedContent,m.nonce,m.authTag):null,encryptedContent:undefined,nonce:undefined,authTag:undefined}));
+  return rows.map(m=>({...m,text:m.encryptedContent&&m.nonce&&m.authTag?this.crypto.decrypt(m.encryptedContent,m.nonce,m.authTag):null,encryptedContent:undefined,nonce:undefined,authTag:undefined,attachments:m.attachments.map(a=>({...a,document:{...a.document,sizeBytes:a.document.sizeBytes.toString()}}))}));
  }
  async send(userId:string,id:string,dto:SendMessageDto){
   const c=await this.conversationForUser(id,userId);if(c.status===ConversationStatus.BLOCKED)throw new ForbiddenException('Conversation is blocked');
