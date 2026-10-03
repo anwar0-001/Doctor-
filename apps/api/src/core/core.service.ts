@@ -33,7 +33,7 @@ export class CoreService {
    return r;
   });
  }
- async reviews(doctorId:string){return this.prisma.review.findMany({where:{doctorId,status:ReviewStatus.PUBLISHED},orderBy:{createdAt:'desc'},take:100,select:{id:true,rating:true,comment:true,createdAt:true,patientId:true}});}
+ async reviews(doctorId:string){return this.prisma.review.findMany({where:{doctorId,status:ReviewStatus.PUBLISHED},orderBy:{createdAt:'desc'},take:100,select:{id:true,rating:true,comment:true,createdAt:true}});}
  async dispute(userId:string,dto:DisputeDto){
   const t=await this.prisma.transaction.findUnique({where:{id:dto.transactionId}});
   if(!t||t.userId!==userId)throw new ForbiddenException('Transaction access denied');
