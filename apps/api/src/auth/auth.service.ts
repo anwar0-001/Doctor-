@@ -102,11 +102,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
+    const rotatedAt = new Date();
+    const revoked = await this.prisma.refreshSession.updateMany({ where: { id: session.id, revokedAt: null }, data: { revokedAt: rotatedAt, revokeReason: 'rotated' } });
+    if (revoked.count !== 1) throw new UnauthorizedException('Refresh token already used');
     const replacement = await this.issueTokens(session.userId, session.user.roles.map((r) => r.role), userAgent, ip);
-    await this.prisma.refreshSession.update({
-      where: { id: session.id },
-      data: { revokedAt: new Date(), revokeReason: 'rotated', replacedBySessionId: (await this.prisma.refreshSession.findFirst({ where: { tokenHash: this.hashToken(replacement.refreshToken) } }))?.id },
-    });
+    const replacementSession = await this.prisma.refreshSession.findFirst({ where: { tokenHash: this.hashToken(replacement.refreshToken) }, select: { id: true } });
+    if (replacementSession) await this.prisma.refreshSession.update({ where: { id: session.id }, data: { replacedBySessionId: replacementSession.id } });
     return replacement;
   }
 
