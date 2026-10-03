@@ -1,4 +1,5 @@
-import {ForbiddenException,Injectable,NotFoundException} from '@nestjs/common';import {Prisma,PrismaService} from '../prisma/prisma.service';import {FamilyDto,HealthProfileDto,PrescriptionDto} from './patient.dto';
+import {ForbiddenException,Injectable,NotFoundException} from '@nestjs/common';import {PrismaService} from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';import {FamilyDto,HealthProfileDto,PrescriptionDto} from './patient.dto';
 @Injectable() export class PatientService{constructor(private readonly p:PrismaService){}
  async health(userId:string){return this.p.healthProfile.upsert({where:{userId},create:{userId},update:{}});}
  async updateHealth(userId:string,d:HealthProfileDto){return this.p.healthProfile.upsert({where:{userId},create:{userId,...d,allergies:d.allergies as Prisma.InputJsonValue,chronicConditions:d.chronicConditions as Prisma.InputJsonValue,medications:d.medications as Prisma.InputJsonValue,emergencyContact:d.emergencyContact as Prisma.InputJsonValue},update:{...d,allergies:d.allergies as Prisma.InputJsonValue,chronicConditions:d.chronicConditions as Prisma.InputJsonValue,medications:d.medications as Prisma.InputJsonValue,emergencyContact:d.emergencyContact as Prisma.InputJsonValue}});}
