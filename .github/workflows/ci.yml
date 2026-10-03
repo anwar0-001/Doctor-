@@ -21,5 +21,7 @@ jobs:
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm --filter @doctor/api prisma:generate
       - run: pnpm --filter @doctor/api typecheck
+      - run: pnpm --filter @doctor/api test
+      - run: pnpm --filter @doctor/api prisma:validate
       - run: pnpm --filter @doctor/web typecheck
       - run: pnpm build
