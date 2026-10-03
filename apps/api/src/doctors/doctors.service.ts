@@ -10,7 +10,7 @@ export class DoctorsService {
 
  async apply(userId:string,dto:DoctorApplicationDto){
   const existing=await this.prisma.doctorProfile.findUnique({where:{userId}});
-  if(existing && [DoctorStatus.UNDER_REVIEW,DoctorStatus.VERIFIED].includes(existing.status)) throw new ConflictException('A doctor application already exists');
+  if(existing && ([DoctorStatus.UNDER_REVIEW,DoctorStatus.VERIFIED] as DoctorStatus[]).includes(existing.status)) throw new ConflictException('A doctor application already exists');
   const [specialty,country,city,languages]=await Promise.all([
    this.prisma.specialty.findFirst({where:{id:dto.specialtyId,active:true}}),
    this.prisma.country.findFirst({where:{id:dto.countryId,active:true}}),
