@@ -1,0 +1,9 @@
+import {ForbiddenException,Injectable,NotFoundException} from '@nestjs/common';import {PrismaService} from '../prisma/prisma.service';import {FamilyDto,HealthProfileDto,PrescriptionDto} from './patient.dto';
+@Injectable() export class PatientService{constructor(private readonly p:PrismaService){}
+ async health(userId:string){return this.p.healthProfile.upsert({where:{userId},create:{userId},update:{}});}
+ async updateHealth(userId:string,d:HealthProfileDto){return this.p.healthProfile.upsert({where:{userId},create:{userId,...d},update:d});}
+ async family(userId:string){return this.p.familyMember.findMany({where:{patientId:userId},orderBy:{createdAt:'desc'}});}
+ async addFamily(userId:string,d:FamilyDto){return this.p.familyMember.create({data:{patientId:userId,...d,dateOfBirth:d.dateOfBirth?new Date(d.dateOfBirth):undefined}});}
+ async prescriptions(userId:string){return this.p.prescription.findMany({where:{patientId:userId},orderBy:{issuedAt:'desc'}});}
+ async prescribe(userId:string,d:PrescriptionDto){const a=await this.p.appointment.findUnique({where:{id:d.appointmentId}});if(!a||a.doctorId!==userId)throw new ForbiddenException();if(!['CONFIRMED','IN_PROGRESS','COMPLETED'].includes(a.status))throw new ForbiddenException('Appointment not eligible');return this.p.prescription.create({data:{appointmentId:a.id,patientId:a.patientId,doctorId:userId,medication:d.medication,dosage:d.dosage,instructions:d.instructions,expiresAt:d.expiresAt?new Date(d.expiresAt):undefined}});}
+}
