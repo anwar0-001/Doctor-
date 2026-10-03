@@ -84,7 +84,7 @@ export class BookingService {
  async addWaitlist(patientId:string,dto:WaitlistDto){
   const service=await this.prisma.doctorService.findFirst({where:{id:dto.serviceId,doctorId:dto.doctorId,active:true},include:{doctor:true}});
   if(!service||service.doctor.status!==DoctorStatus.VERIFIED) throw new ConflictException('Service is not available for waitlist');
-  return this.prisma.waitlist.create({data:{patientId,doctorId:dto.doctorId,serviceId:dto.serviceId,preferredStartsAt:dto.preferredStartsAt?new Date(dto.preferredStartsAt):undefined,preferredEndsAt:dto.preferredEndsAt?new Date(dto.preferredEndsAt):undefined,timezone:dto.timezone??'UTC'});
+  return this.prisma.waitlist.create({data:{patientId,doctorId:dto.doctorId,serviceId:dto.serviceId,preferredStartsAt:dto.preferredStartsAt?new Date(dto.preferredStartsAt):undefined,preferredEndsAt:dto.preferredEndsAt?new Date(dto.preferredEndsAt):undefined,timezone:dto.timezone??'UTC'}});
  }
  async listMine(userId:string){return this.prisma.appointment.findMany({where:{OR:[{patientId:userId},{doctorId:userId}]},include:{service:true},orderBy:{startsAt:'asc'},take:100});}
 }
