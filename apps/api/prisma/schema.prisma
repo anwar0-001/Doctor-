@@ -564,11 +564,23 @@ model DoctorPayout {
 @@unique([transactionId])
 @@index([doctorId,status])
 }
-model Conversation { id String @id @default(uuid()) @db.Uuid patientId String @db.Uuid doctorId String @db.Uuid appointmentId String? @db.Uuid status ConversationStatus @default(ACTIVE) lastMessageAt DateTime? createdAt DateTime @default(now()) updatedAt DateTime @updatedAt patient User @relation("ConversationPatient",fields:[patientId],references:[id],onDelete:Cascade) doctor User @relation("ConversationDoctor",fields:[doctorId],references:[id],onDelete:Cascade) appointment Appointment? @relation(fields:[appointmentId],references:[id],onDelete:SetNull) messages Message[]
+model Conversation {
+ id String @id @default(uuid()) @db.Uuid
+ patientId String @db.Uuid
+ doctorId String @db.Uuid
+ appointmentId String? @db.Uuid
+ status ConversationStatus @default(ACTIVE)
+ lastMessageAt DateTime?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ patient User @relation("ConversationPatient",fields:[patientId],references:[id],onDelete:Cascade)
+ doctor User @relation("ConversationDoctor",fields:[doctorId],references:[id],onDelete:Cascade)
+ appointment Appointment? @relation(fields:[appointmentId],references:[id],onDelete:SetNull)
+ messages Message[]
  reports Report[]
-@@unique([patientId,doctorId])
-@@index([patientId,lastMessageAt])
-@@index([doctorId,lastMessageAt])
+ @@unique([patientId,doctorId])
+ @@index([patientId,lastMessageAt])
+ @@index([doctorId,lastMessageAt])
 }
 model Message {
  id String @id @default(uuid()) @db.Uuid
