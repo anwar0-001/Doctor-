@@ -18,17 +18,6 @@ export class CoreService {
  async notifications(userId:string){return this.prisma.notification.findMany({where:{userId},orderBy:{createdAt:'desc'},take:100});}
  async markNotificationRead(userId:string,id:string){const n=await this.prisma.notification.findUnique({where:{id}});if(!n||n.userId!==userId)throw new ForbiddenException();return this.prisma.notification.update({where:{id},data:{status:NotificationStatus.READ,readAt:new Date()}});}
  async video(userId:string,dto:VideoDto){const a=await this.prisma.appointment.findUnique({where:{id:dto.appointmentId}});if(!a||![a.patientId,a.doctorId].includes(userId))throw new ForbiddenException();if(!['CONFIRMED','IN_PROGRESS'].includes(a.status))throw new BadRequestException('Appointment is not ready for video');const existing=await this.prisma.videoSession.findUnique({where:{appointmentId:a.id}});if(existing)return existing;const provider=(process.env.VIDEO_PROVIDER??'WEBRTC') as VideoProvider;return this.prisma.videoSession.create({data:{appointmentId:a.id,provider,roomName:'doctor-'+a.id,status:VideoSessionStatus.WAITING}});}
- async monthlyFee(doctorId:string, periodStart:Date, periodEnd:Date){
-  const cfg=await this.prisma.platformFeeConfig.findFirst({where:{active:true,effectiveFrom:{lte:periodEnd}},orderBy:{effectiveFrom:'desc'}});
-  if(!cfg) throw new BadRequestException('No active platform fee configuration');
-  const txs=await this.prisma.transaction.findMany({where:{status:'SUCCEEDED',createdAt:{gte:periodStart,lt:periodEnd},appointment:{doctorId}},select:{consultationAmount:true,currency:true}});
-  const gross=txs.reduce((sum,t)=>sum+Number(t.consultationAmount),0);
-  const fee=Number((gross*Number(cfg.monthlyDoctorPercent)/100).toFixed(2));
-  const currency=txs[0]?.currency??'USD';
-  const existing=await this.prisma.doctorMonthlyFee.findUnique({where:{doctorId_periodStart_periodEnd:{doctorId,periodStart,periodEnd}}});
-  if(existing) return existing;
-  return this.prisma.doctorMonthlyFee.create({data:{doctorId,periodStart,periodEnd,grossEarnings:gross,feePercent:cfg.monthlyDoctorPercent,feeAmount:fee,currency,status:'PENDING'}});
- }
  async content(language='en'){return this.prisma.healthArticle.findMany({where:{language,status:HealthArticleStatus.PUBLISHED},orderBy:{publishedAt:'desc'},take:50});}
  async ads(){return this.prisma.ad.findMany({where:{status:AdStatus.ACTIVE,OR:[{startsAt:null},{startsAt:{lte:new Date()}}],AND:[{OR:[{endsAt:null},{endsAt:{gte:new Date()}}]}]},take:10});}
 }
