@@ -5,28 +5,148 @@ datasource db {
   provider = "postgresql"
   url = env("DATABASE_URL")
 }
-enum UserStatus { ACTIVE SUSPENDED BANNED DELETED }
-enum UserRole { PATIENT DOCTOR MODERATOR SUPPORT FINANCE ADMIN SUPER_ADMIN }
-enum DoctorStatus { PENDING UNDER_REVIEW VERIFIED REJECTED SUSPENDED BANNED }
-enum AppointmentStatus { PENDING CONFIRMED IN_PROGRESS COMPLETED CANCELLED REFUNDED DISPUTED NO_SHOW }
-enum PaymentStatus { PENDING SUCCEEDED FAILED REFUNDED PARTIALLY_REFUNDED DISPUTED }
-enum VerificationDocumentType { GOVERNMENT_ID LICENSE_PROOF DEGREE CERTIFICATE OTHER }
-enum LicenseStatus { PENDING VERIFIED EXPIRED REJECTED SUSPENDED }
-enum AvailabilityExceptionType { HOLIDAY LEAVE BLOCKED }
-enum WaitlistStatus { WAITING NOTIFIED BOOKED CANCELLED EXPIRED }
-enum ConversationStatus { ACTIVE BLOCKED ARCHIVED }
-enum MessageType { TEXT IMAGE DOCUMENT VOICE_SYSTEM }
-enum ReportStatus { OPEN REVIEWING RESOLVED DISMISSED }
-enum SubscriptionStatus { ACTIVE PAST_DUE CANCELLED EXPIRED }
-enum SubscriptionTier { FREE PREMIUM PRO }
-enum ReviewStatus { PUBLISHED HIDDEN FLAGGED }
-enum DisputeStatus { OPEN UNDER_REVIEW RESOLVED REJECTED }
-enum NotificationChannel { IN_APP EMAIL SMS PUSH }
-enum NotificationStatus { QUEUED SENT FAILED READ }
-enum VideoProvider { DAILY TWILIO AGORA WEBRTC }
-enum VideoSessionStatus { CREATED WAITING ACTIVE ENDED FAILED }
-enum AdStatus { DRAFT ACTIVE PAUSED EXPIRED }
-enum HealthArticleStatus { DRAFT PUBLISHED ARCHIVED }
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  DELETED
+}
+enum UserRole {
+  PATIENT
+  DOCTOR
+  MODERATOR
+  SUPPORT
+  FINANCE
+  ADMIN
+  SUPER_ADMIN
+}
+enum DoctorStatus {
+  PENDING
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+  SUSPENDED
+  BANNED
+}
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  REFUNDED
+  DISPUTED
+  NO_SHOW
+}
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  DISPUTED
+}
+enum VerificationDocumentType {
+  GOVERNMENT_ID
+  LICENSE_PROOF
+  DEGREE
+  CERTIFICATE
+  OTHER
+}
+enum LicenseStatus {
+  PENDING
+  VERIFIED
+  EXPIRED
+  REJECTED
+  SUSPENDED
+}
+enum AvailabilityExceptionType {
+  HOLIDAY
+  LEAVE
+  BLOCKED
+}
+enum WaitlistStatus {
+  WAITING
+  NOTIFIED
+  BOOKED
+  CANCELLED
+  EXPIRED
+}
+enum ConversationStatus {
+  ACTIVE
+  BLOCKED
+  ARCHIVED
+}
+enum MessageType {
+  TEXT
+  IMAGE
+  DOCUMENT
+  VOICE_SYSTEM
+}
+enum ReportStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+enum SubscriptionTier {
+  FREE
+  PREMIUM
+  PRO
+}
+enum ReviewStatus {
+  PUBLISHED
+  HIDDEN
+  FLAGGED
+}
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+}
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+}
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+  READ
+}
+enum VideoProvider {
+  DAILY
+  TWILIO
+  AGORA
+  WEBRTC
+}
+enum VideoSessionStatus {
+  CREATED
+  WAITING
+  ACTIVE
+  ENDED
+  FAILED
+}
+enum AdStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  EXPIRED
+}
+enum HealthArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
 model User {
  id String @id @default(uuid()) @db.Uuid
  email String @unique
