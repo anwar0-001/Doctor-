@@ -57,4 +57,18 @@ describe('CoreService security invariants', () => {
     await expect(new CoreService(prisma).resolveDispute('d','resolved after review')).resolves.toEqual({id:'d',status:'RESOLVED'});
     expect(prisma.transaction.update).not.toHaveBeenCalled();
   });
+  it('blocks notification IDOR on read', async()=>{
+    prisma.notification.findUnique.mockResolvedValue({id:'n',userId:'owner'});
+    await expect(new CoreService(prisma).markNotificationRead('attacker','n'))
+      .rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.notification.update).not.toHaveBeenCalled();
+  });
+
+  it('blocks video-session creation for unrelated users', async()=>{
+    prisma.appointment.findUnique.mockResolvedValue({id:'a',patientId:'patient',doctorId:'doctor',status:'CONFIRMED'});
+    await expect(new CoreService(prisma).video('attacker',{appointmentId:'a'} as any))
+      .rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.videoSession.create).not.toHaveBeenCalled();
+  });
+
 });
