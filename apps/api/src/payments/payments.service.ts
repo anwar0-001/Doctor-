@@ -18,7 +18,7 @@ export class PaymentsService {
   const doctor=await this.prisma.doctorProfile.findUnique({where:{userId},include:{country:true}});
   if(!doctor) throw new NotFoundException('Doctor profile not found'); if(doctor.status!==DoctorStatus.VERIFIED) throw new ConflictException('Doctor must be verified first');
   let accountId=doctor.stripeAccountId;
-  if(!accountId){const a=await this.stripe('accounts','POST',{type:'express',country:(doctor.country?.code??this.config.get<string>('STRIPE_CONNECT_COUNTRY','US')).toUpperCase(),capabilities:'{"card_payments":{"requested":true},"transfers":{"requested":true}}'});accountId=a.id;await this.prisma.doctorProfile.update({where:{userId},data:{stripeAccountId:accountId}});}
+  if(!accountId){const a=await this.stripe('accounts','POST',{type:'express',country:(doctor.country?.code??this.config.get<string>('STRIPE_CONNECT_COUNTRY','US')).toUpperCase(),'capabilities[card_payments][requested]':'true','capabilities[transfers][requested]':'true'});accountId=a.id;await this.prisma.doctorProfile.update({where:{userId},data:{stripeAccountId:accountId}});}
   const link=await this.stripe('account_links','POST',{account:accountId,refresh_url:refreshUrl,return_url:returnUrl,type:'account_onboarding'});
   return {accountId,url:link.url};
  }
@@ -36,8 +36,8 @@ export class PaymentsService {
   if(!Number.isSafeInteger(minor)||!Number.isSafeInteger(applicationFee)||minor<=0) throw new BadRequestException('Invalid payment amount');
   const tx=await this.prisma.transaction.create({data:{appointmentId,userId,provider:'stripe',currency:a.service.currency.toLowerCase(),consultationAmount:amount,patientPlatformFee:patientFee,doctorPlatformFee:doctorFee,doctorNet,platformRevenue,feeSnapshot:{patientPercent:String(fee.patientPercent),doctorPercent:String(fee.doctorPercent),monthlyDoctorPercent:String(fee.monthlyDoctorPercent),feeConfigId:fee.id}}});
   try{
-   const intent=await this.stripe('payment_intents','POST',{amount:minor,currency:a.service.currency.toLowerCase(),payment_method_types:'card',application_fee_amount:applicationFee,'transfer_data[destination]':a.doctorProfile.stripeAccountId,'metadata[transactionId]':tx.id,'metadata[appointmentId]':appointmentId});
-   const updated=await this.prisma.transaction.update({where:{id:tx.id},data:{providerTransactionId:intent.id,providerClientSecret:intent.client_secret}});
+   const intent=await this.stripe('payment_intents','POST',{amount:minor,currency:a.service.currency.toLowerCase(),payment_method_types:['card'],application_fee_amount:applicationFee,'transfer_data[destination]':a.doctorProfile.stripeAccountId,'metadata[transactionId]':tx.id,'metadata[appointmentId]':appointmentId});
+   const expanded=await this.stripe('payment_intents/'+intent.id,'GET',{ 'expand[0]':'latest_charge' }); const feeId=typeof (expanded as any)?.latest_charge?.application_fee==='string' ? (expanded as any).latest_charge.application_fee : (expanded as any)?.latest_charge?.application_fee?.id; const updated=await this.prisma.transaction.update({where:{id:tx.id},data:{providerTransactionId:intent.id,providerClientSecret:intent.client_secret,providerFeeId:feeId}});
    return {transactionId:updated.id,paymentIntentId:intent.id,clientSecret:intent.client_secret};
   }catch(e){await this.prisma.transaction.update({where:{id:tx.id},data:{status:PaymentStatus.FAILED}});throw e;}
  }
@@ -56,7 +56,7 @@ export class PaymentsService {
   try{
    const obj=event.data?.object as any;const txId=obj?.metadata?.transactionId as string|undefined;
    if(txId){
-    if(event.type==='payment_intent.succeeded'){await this.prisma.$transaction([this.prisma.transaction.update({where:{id:txId},data:{status:PaymentStatus.SUCCEEDED}}),this.prisma.appointment.updateMany({where:{id:obj.metadata.appointmentId,status:AppointmentStatus.PENDING},data:{status:AppointmentStatus.CONFIRMED}})]);}
+    if(event.type==='account.updated'){const accountId=obj?.id as string|undefined;if(accountId) await this.prisma.doctorProfile.updateMany({where:{stripeAccountId:accountId},data:{stripeOnboardingComplete:Boolean(obj?.details_submitted&&obj?.charges_enabled&&obj?.payouts_enabled)}});} else if(event.type==='payment_intent.succeeded'){await this.prisma.$transaction([this.prisma.transaction.update({where:{id:txId},data:{status:PaymentStatus.SUCCEEDED}}),this.prisma.appointment.updateMany({where:{id:obj.metadata.appointmentId,status:AppointmentStatus.PENDING},data:{status:AppointmentStatus.CONFIRMED}})]);}
     else if(event.type==='payment_intent.payment_failed'){await this.prisma.$transaction([this.prisma.transaction.update({where:{id:txId},data:{status:PaymentStatus.FAILED}}),this.prisma.appointment.updateMany({where:{id:obj.metadata.appointmentId,status:AppointmentStatus.PENDING},data:{status:AppointmentStatus.CANCELLED,cancellationReason:'Payment failed',cancelledAt:new Date()}})]);}
     else if(event.type==='payment_intent.canceled') await this.prisma.transaction.update({where:{id:txId},data:{status:PaymentStatus.FAILED}});
    }
@@ -68,7 +68,7 @@ export class PaymentsService {
   const a=await this.prisma.appointment.findUnique({where:{id:appointmentId},include:{transactions:{where:{status:PaymentStatus.SUCCEEDED},orderBy:{createdAt:'desc'}}}});
   if(!a)throw new NotFoundException('Appointment not found');if(a.patientId!==userId&&a.doctorId!==userId)throw new UnauthorizedException();
   const tx=a.transactions[0];if(!tx?.providerTransactionId)throw new ConflictException('No successful payment found');
-  const refund=await this.stripe('refunds','POST',{payment_intent:tx.providerTransactionId,reason:'requested_by_customer',metadata:{transactionId:tx.id,reason}});
+  const refund=await this.stripe('refunds','POST',{payment_intent:tx.providerTransactionId,reason:'requested_by_customer',metadata:{transactionId:tx.id,reason}}); if(tx.providerFeeId){try{await this.stripe('application_fees/'+tx.providerFeeId+'/refunds','POST',{});}catch{}}
   const amount=Number(refund.amount??0)/100;await this.prisma.transaction.update({where:{id:tx.id},data:{status:amount>=Number(tx.consultationAmount)+Number(tx.patientPlatformFee)?PaymentStatus.REFUNDED:PaymentStatus.PARTIALLY_REFUNDED,refundAmount:amount}});
   return {refundId:refund.id,amount};
  }
