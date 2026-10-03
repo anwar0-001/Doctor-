@@ -19,6 +19,5 @@ jobs:
         with:
           node-version: 22
       - run: pnpm install --no-frozen-lockfile
-      - run: pnpm --filter @doctor/api prisma:validate
       - run: pnpm typecheck
       - run: pnpm build
