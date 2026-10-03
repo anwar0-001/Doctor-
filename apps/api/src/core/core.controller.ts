@@ -9,7 +9,6 @@ import { CreatePlanDto,DisputeDto,NotificationDto,ReviewDto,SubscribeDto,VideoDt
  constructor(private readonly s:CoreService){}
  @Get('plans') plans(){return this.s.plans();}
  @Get('reviews/:doctorId') reviews(@Param('doctorId') id:string){return this.s.reviews(id);}
- @Get('monthly-fee') @UseGuards(JwtAuthGuard) @ApiBearerAuth() monthlyFee(@Req() r:any,@Query('periodStart') start:string,@Query('periodEnd') end:string){return this.s.monthlyFee(r.user.id,new Date(start),new Date(end));}
  @Get('content') content(@Query('language') language?:string){return this.s.content(language??'en');}
  @UseGuards(JwtAuthGuard) @ApiBearerAuth()
  @Post('subscriptions') subscribe(@Req() r:any,@Body() d:SubscribeDto){return this.s.subscribe(r.user.id,d);}
