@@ -190,8 +190,8 @@ model UserRoleAssignment {
  userId String @db.Uuid
  role UserRole
  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
- @@id([userId,role])
- @@index([role])
+@@id([userId,role])
+@@index([role])
 }
 model RefreshSession {
  id String @id @default(uuid()) @db.Uuid
@@ -206,7 +206,7 @@ model RefreshSession {
  userAgent String?
  ipAddress String?
  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
- @@index([userId,revokedAt,expiresAt])
+@@index([userId,revokedAt,expiresAt])
 }
 model EmailVerificationToken {
  id String @id @default(uuid()) @db.Uuid
@@ -216,7 +216,7 @@ model EmailVerificationToken {
  usedAt DateTime?
  createdAt DateTime @default(now())
  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
- @@index([userId,expiresAt])
+@@index([userId,expiresAt])
 }
 model PasswordResetToken {
  id String @id @default(uuid()) @db.Uuid
@@ -226,7 +226,7 @@ model PasswordResetToken {
  usedAt DateTime?
  createdAt DateTime @default(now())
  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
- @@index([userId,expiresAt])
+@@index([userId,expiresAt])
 }
 model PatientProfile {
  userId String @id @db.Uuid
@@ -265,7 +265,7 @@ model FamilyMember {
  createdAt DateTime @default(now())
  updatedAt DateTime @updatedAt
  patient PatientProfile @relation(fields:[patientId],references:[userId],onDelete:Cascade)
- @@index([patientId])
+@@index([patientId])
 }
 model Specialty {
  id String @id @default(uuid()) @db.Uuid
@@ -276,7 +276,7 @@ model Specialty {
  doctors DoctorProfile[]
  createdAt DateTime @default(now())
  updatedAt DateTime @updatedAt
- @@index([active,name])
+@@index([active,name])
 }
 model Country {
  id String @id @default(uuid()) @db.Uuid
@@ -286,7 +286,7 @@ model Country {
  cities City[]
  doctors DoctorProfile[]
  licenses MedicalLicense[]
- @@index([active,name])
+@@index([active,name])
 }
 model City {
  id String @id @default(uuid()) @db.Uuid
@@ -296,8 +296,8 @@ model City {
  country Country @relation(fields:[countryId],references:[id],onDelete:Restrict)
  doctors DoctorProfile[]
  patients PatientProfile[]
- @@unique([countryId,name])
- @@index([countryId,active,name])
+@@unique([countryId,name])
+@@index([countryId,active,name])
 }
 model Language {
  id String @id @default(uuid()) @db.Uuid
@@ -306,7 +306,7 @@ model Language {
  nativeName String?
  active Boolean @default(true)
  doctorLanguages DoctorLanguage[]
- @@index([active,name])
+@@index([active,name])
 }
 model DoctorProfile {
  userId String @id @db.Uuid
@@ -338,16 +338,16 @@ appointments Appointment[]
 waitlist Waitlist[]
 payouts DoctorPayout[]
  reviewsReceived Review[]
- @@index([status,specialtyId,countryId,cityId])
- @@index([status,ratingAvg])
+@@index([status,specialtyId,countryId,cityId])
+@@index([status,ratingAvg])
 }
 model DoctorLanguage {
  doctorId String @db.Uuid
  languageId String @db.Uuid
  doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Cascade)
  language Language @relation(fields:[languageId],references:[id],onDelete:Restrict)
- @@id([doctorId,languageId])
- @@index([languageId,doctorId])
+@@id([doctorId,languageId])
+@@index([languageId,doctorId])
 }
 model MedicalLicense {
  id String @id @default(uuid())
@@ -363,8 +363,8 @@ model MedicalLicense {
  updatedAt DateTime @updatedAt
  doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Cascade)
  country Country? @relation(fields:[countryId],references:[id],onDelete:SetNull)
- @@unique([licensingAuthority,licenseNumber])
- @@index([doctorId,status])
+@@unique([licensingAuthority,licenseNumber])
+@@index([doctorId,status])
 }
 model DoctorVerification {
  id String @id @default(uuid()) @db.Uuid
@@ -381,8 +381,8 @@ model DoctorVerification {
  createdAt DateTime @default(now())
  doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Cascade)
  documents VerificationDocument[]
- @@index([doctorId,status])
- @@index([status,createdAt])
+@@index([doctorId,status])
+@@index([status,createdAt])
 }
 model VerificationDocument {
  id String @id @default(uuid()) @db.Uuid
@@ -408,7 +408,7 @@ model DoctorService {
  active Boolean @default(true)
  doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Cascade)
  appointments Appointment[]
- @@index([doctorId,active])
+@@index([doctorId,active])
 }
 model Availability {
  id String @id @default(uuid())
@@ -421,7 +421,7 @@ model Availability {
  createdAt DateTime @default(now())
  updatedAt DateTime @updatedAt
  doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Cascade)
- @@index([doctorId,dayOfWeek,active])
+@@index([doctorId,dayOfWeek,active])
 }
 model AvailabilityException {
  id String @id @default(uuid())
@@ -434,7 +434,7 @@ model AvailabilityException {
  createdAt DateTime @default(now())
  updatedAt DateTime @updatedAt
  doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Cascade)
- @@index([doctorId,startsAt,endsAt])
+@@index([doctorId,startsAt,endsAt])
 }
 model Prescription {
  id String @id @default(uuid()) @db.Uuid
@@ -449,11 +449,15 @@ model Prescription {
  appointment Appointment @relation(fields:[appointmentId],references:[id],onDelete:Restrict)
  patient User @relation("PatientPrescriptions",fields:[patientId],references:[id],onDelete:Restrict)
  doctor User @relation("DoctorPrescriptions",fields:[doctorId],references:[id],onDelete:Restrict)
- @@index([patientId,issuedAt])
- @@index([doctorId,issuedAt])
+@@index([patientId,issuedAt])
+@@index([doctorId,issuedAt])
 }
 model Appointment { id String @id @default(uuid()) patientId String @db.Uuid doctorId String @db.Uuid serviceId String @db.Uuid startsAt DateTime endsAt DateTime patientTimezone String status AppointmentStatus @default(PENDING) idempotencyKey String? cancellationReason String? cancelledAt DateTime? createdAt DateTime @default(now()) updatedAt DateTime @updatedAt patient User @relation("PatientAppointments",fields:[patientId],references:[id]) doctor User @relation("DoctorAppointments",fields:[doctorId],references:[id]) doctorProfile DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Restrict) service DoctorService @relation(fields:[serviceId],references:[id]) transactions Transaction[] conversation Conversation? messages Message[] prescriptions Prescription[] review Review?
- videoSession VideoSession? @@unique([patientId,idempotencyKey]) @@index([doctorId,startsAt,status]) @@index([doctorId,endsAt,status]) @@index([patientId,startsAt,status]) }
+ videoSession VideoSession?
+@@unique([patientId,idempotencyKey])
+@@index([doctorId,startsAt,status])
+@@index([doctorId,endsAt,status])
+@@index([patientId,startsAt,status]) }
 model Waitlist {
  id String @id @default(uuid())
  doctorId String @db.Uuid
@@ -468,8 +472,8 @@ model Waitlist {
  patient User @relation(fields:[patientId],references:[id],onDelete:Cascade)
  doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Cascade)
  service DoctorService @relation(fields:[serviceId],references:[id],onDelete:Restrict)
- @@index([doctorId,status,createdAt])
- @@index([patientId,status])
+@@index([doctorId,status,createdAt])
+@@index([patientId,status])
 }
 model PlatformFeeConfig {
  id String @id @default(uuid()) @db.Uuid
@@ -482,7 +486,9 @@ model PlatformFeeConfig {
  createdAt DateTime @default(now())
 }
 model Transaction { id String @id @default(uuid()) @db.Uuid appointmentId String? @db.Uuid userId String @db.Uuid provider String providerTransactionId String? providerClientSecret String? providerFeeId String? status PaymentStatus @default(PENDING) currency String consultationAmount Decimal @db.Decimal(12,2) patientPlatformFee Decimal @db.Decimal(12,2) @default(0) doctorPlatformFee Decimal @db.Decimal(12,2) @default(0) taxAmount Decimal @db.Decimal(12,2) @default(0) processingFee Decimal @db.Decimal(12,2) @default(0) refundAmount Decimal @db.Decimal(12,2) @default(0) doctorNet Decimal @db.Decimal(12,2) @default(0) platformRevenue Decimal @db.Decimal(12,2) @default(0) feeSnapshot Json createdAt DateTime @default(now()) updatedAt DateTime @updatedAt appointment Appointment? @relation(fields:[appointmentId],references:[id]) user User @relation(fields:[userId],references:[id]) payout DoctorPayout?\n
- disputes Dispute[] @@index([providerTransactionId]) @@index([appointmentId,status]) }
+ disputes Dispute[]
+@@index([providerTransactionId])
+@@index([appointmentId,status]) }
 model PaymentWebhookEvent {
  id String @id @default(uuid()) @db.Uuid
  provider String
@@ -491,8 +497,8 @@ model PaymentWebhookEvent {
  processedAt DateTime?
  status String @default("RECEIVED")
  payload Json?
- @@unique([provider,eventId])
- @@index([provider,receivedAt])
+@@unique([provider,eventId])
+@@index([provider,receivedAt])
 }
 model DoctorPayout {
  id String @id @default(uuid()) @db.Uuid
@@ -507,21 +513,25 @@ model DoctorPayout {
  updatedAt DateTime @updatedAt
  doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Restrict)
  transaction Transaction @relation(fields:[transactionId],references:[id],onDelete:Restrict)
- @@unique([transactionId])
- @@index([doctorId,status])
+@@unique([transactionId])
+@@index([doctorId,status])
 }
 model Conversation { id String @id @default(uuid()) @db.Uuid patientId String @db.Uuid doctorId String @db.Uuid appointmentId String? @db.Uuid status ConversationStatus @default(ACTIVE) lastMessageAt DateTime? createdAt DateTime @default(now()) updatedAt DateTime @updatedAt patient User @relation("ConversationPatient",fields:[patientId],references:[id],onDelete:Cascade) doctor User @relation("ConversationDoctor",fields:[doctorId],references:[id],onDelete:Cascade) appointment Appointment? @relation(fields:[appointmentId],references:[id],onDelete:SetNull) messages Message[]
  reports Report[]
- @@unique([patientId,doctorId]) @@index([patientId,lastMessageAt]) @@index([doctorId,lastMessageAt]) }
+@@unique([patientId,doctorId])
+@@index([patientId,lastMessageAt])
+@@index([doctorId,lastMessageAt]) }
 model Message { id String @id @default(uuid()) @db.Uuid conversationId String @db.Uuid senderId String @db.Uuid appointmentId String? @db.Uuid type MessageType encryptedContent String? nonce String? authTag String? replyToId String? createdAt DateTime @default(now()) updatedAt DateTime @updatedAt conversation Conversation @relation(fields:[conversationId],references:[id],onDelete:Cascade) sender User @relation("MessageSender",fields:[senderId],references:[id],onDelete:Restrict) appointment Appointment? @relation(fields:[appointmentId],references:[id],onDelete:SetNull) replyTo Message? @relation("MessageReplies",fields:[replyToId],references:[id],onDelete:SetNull) replies Message[] @relation("MessageReplies") attachments MessageAttachment[] reads MessageRead[]
- reports Report[] @@index([conversationId,createdAt]) @@index([senderId,createdAt]) }
+ reports Report[]
+@@index([conversationId,createdAt])
+@@index([senderId,createdAt]) }
 model MessageAttachment {
  id String @id @default(uuid()) @db.Uuid
  messageId String @db.Uuid
  documentId String @db.Uuid
  message Message @relation(fields:[messageId],references:[id],onDelete:Cascade)
  document MedicalDocument @relation(fields:[documentId],references:[id],onDelete:Restrict)
- @@unique([messageId,documentId])
+@@unique([messageId,documentId])
 }
 model MessageRead {
  messageId String @db.Uuid
@@ -529,8 +539,8 @@ model MessageRead {
  readAt DateTime @default(now())
  message Message @relation(fields:[messageId],references:[id],onDelete:Cascade)
  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
- @@id([messageId,userId])
- @@index([userId,readAt])
+@@id([messageId,userId])
+@@index([userId,readAt])
 }
 model MedicalDocument {
  id String @id @default(uuid()) @db.Uuid
@@ -549,8 +559,8 @@ model MedicalDocument {
  uploader User @relation("DocumentUploader",fields:[uploaderId],references:[id],onDelete:Restrict)
  doctor User? @relation("DocumentDoctor",fields:[doctorId],references:[id],onDelete:SetNull)
  attachments MessageAttachment[]
- @@index([ownerId,createdAt])
- @@index([doctorId,createdAt])
+@@index([ownerId,createdAt])
+@@index([doctorId,createdAt])
 }
 model Report {
  id String @id @default(uuid()) @db.Uuid
@@ -567,8 +577,8 @@ model Report {
  targetUser User? @relation("ReportTarget",fields:[targetUserId],references:[id],onDelete:SetNull)
  conversation Conversation? @relation(fields:[conversationId],references:[id],onDelete:SetNull)
  message Message? @relation(fields:[messageId],references:[id],onDelete:SetNull)
- @@index([status,createdAt])
- @@index([reporterId,createdAt])
+@@index([status,createdAt])
+@@index([reporterId,createdAt])
 }
 }
 model SubscriptionPlan {
@@ -599,7 +609,7 @@ model Subscription {
  updatedAt DateTime @updatedAt
  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
  plan SubscriptionPlan @relation(fields:[planId],references:[id],onDelete:Restrict)
- @@index([userId,status])
+@@index([userId,status])
 }
 model Review {
  id String @id @default(uuid()) @db.Uuid
@@ -614,8 +624,8 @@ model Review {
  appointment Appointment @relation(fields:[appointmentId],references:[id],onDelete:Restrict)
  doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Restrict)
  patient User @relation("PatientReviews",fields:[patientId],references:[id],onDelete:Restrict)
- @@unique([appointmentId])
- @@index([doctorId,status,createdAt])
+@@unique([appointmentId])
+@@index([doctorId,status,createdAt])
 }
 model Dispute {
  id String @id @default(uuid()) @db.Uuid
@@ -629,8 +639,8 @@ model Dispute {
  resolvedAt DateTime?
  transaction Transaction @relation(fields:[transactionId],references:[id],onDelete:Restrict)
  openedBy User @relation(fields:[openedById],references:[id],onDelete:Restrict)
- @@index([status,createdAt])
- @@index([openedById,createdAt])
+@@index([status,createdAt])
+@@index([openedById,createdAt])
 }
 model Notification {
  id String @id @default(uuid()) @db.Uuid
@@ -644,7 +654,7 @@ model Notification {
  readAt DateTime?
  createdAt DateTime @default(now())
  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
- @@index([userId,status,createdAt])
+@@index([userId,status,createdAt])
 }
 model VideoSession {
  id String @id @default(uuid()) @db.Uuid
@@ -675,7 +685,7 @@ model Ad {
  premiumExcluded Boolean @default(true)
  createdAt DateTime @default(now())
  updatedAt DateTime @updatedAt
- @@index([status,startsAt,endsAt])
+@@index([status,startsAt,endsAt])
 }
 model HealthArticle {
  id String @id @default(uuid()) @db.Uuid
@@ -689,7 +699,7 @@ model HealthArticle {
  publishedAt DateTime?
  createdAt DateTime @default(now())
  updatedAt DateTime @updatedAt
- @@index([language,status,publishedAt])
+@@index([language,status,publishedAt])
 }
 model AuditLog {
  id String @id @default(uuid()) @db.Uuid
@@ -700,5 +710,5 @@ model AuditLog {
  metadata Json?
  createdAt DateTime @default(now())
  actor User? @relation("AuditActor",fields:[actorUserId],references:[id])
- @@index([actorUserId,createdAt])
+@@index([actorUserId,createdAt])
 }
