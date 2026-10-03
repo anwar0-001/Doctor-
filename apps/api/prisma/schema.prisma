@@ -171,6 +171,7 @@ model User {
  reviews Review[] @relation("PatientReviews")
  notifications Notification[]
  disputesOpened Dispute[]
+ waitlists Waitlist[]
 
  auditEvents AuditLog[] @relation("AuditActor")
  refreshSessions RefreshSession[]
@@ -407,7 +408,22 @@ model DoctorService {
  cancellationWindowMinutes Int @default(1440)
  active Boolean @default(true)
  doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Cascade)
- appointments Appointment[]
+@@index([doctorId,active])
+}
+model DoctorService {
+ id String @id @default(uuid())
+ doctorId String @db.Uuid
+ name String
+ consultationType String
+ durationMinutes Int
+ price Decimal @db.Decimal(12,2)
+ currency String
+ bufferBeforeMinutes Int @default(0)
+ bufferAfterMinutes Int @default(0)
+ minimumNoticeMinutes Int @default(60)
+ cancellationWindowMinutes Int @default(1440)
+ active Boolean @default(true)
+ doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Cascade)
 @@index([doctorId,active])
 }
 model Availability {
@@ -468,7 +484,6 @@ model Appointment {
  updatedAt DateTime @updatedAt
  patient User @relation("PatientAppointments",fields:[patientId],references:[id])
  doctor User @relation("DoctorAppointments",fields:[doctorId],references:[id])
- doctorProfile DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Restrict)
  service DoctorService @relation(fields:[serviceId],references:[id])
  transactions Transaction[]
  conversation Conversation?
@@ -568,7 +583,7 @@ model Conversation {
  id String @id @default(uuid()) @db.Uuid
  patientId String @db.Uuid
  doctorId String @db.Uuid
- appointmentId String? @db.Uuid
+ appointmentId String? @unique @db.Uuid
  status ConversationStatus @default(ACTIVE)
  lastMessageAt DateTime?
  createdAt DateTime @default(now())
