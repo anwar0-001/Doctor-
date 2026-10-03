@@ -56,7 +56,7 @@ export class BookingService {
   const a=await this.prisma.appointment.findUnique({where:{id},include:{service:true}});
   if(!a) throw new NotFoundException('Appointment not found');
   if(a.patientId!==userId&&a.doctorId!==userId) throw new ForbiddenException();
-  if([AppointmentStatus.CANCELLED,AppointmentStatus.COMPLETED,AppointmentStatus.REFUNDED].includes(a.status)) throw new ConflictException('Appointment cannot be cancelled');
+  if(([AppointmentStatus.CANCELLED,AppointmentStatus.COMPLETED,AppointmentStatus.REFUNDED] as AppointmentStatus[]).includes(a.status)) throw new ConflictException('Appointment cannot be cancelled');
   const minutes=(a.startsAt.getTime()-Date.now())/60000;
   if(a.patientId===userId&&minutes<a.service.cancellationWindowMinutes) throw new ConflictException('Cancellation window has passed');
   const updated=await this.prisma.appointment.update({where:{id},data:{status:AppointmentStatus.CANCELLED,cancellationReason:dto.reason,cancelledAt:new Date()}});
@@ -67,7 +67,7 @@ export class BookingService {
   const a=await this.prisma.appointment.findUnique({where:{id},include:{service:true}});
   if(!a) throw new NotFoundException('Appointment not found');
   if(a.patientId!==userId&&a.doctorId!==userId) throw new ForbiddenException();
-  if(![AppointmentStatus.PENDING,AppointmentStatus.CONFIRMED].includes(a.status)) throw new ConflictException('Appointment cannot be rescheduled');
+  if(!([AppointmentStatus.PENDING,AppointmentStatus.CONFIRMED] as AppointmentStatus[]).includes(a.status)) throw new ConflictException('Appointment cannot be rescheduled');
   const startsAt=zonedToUtc(dto.startsAtLocal,dto.timezone??a.patientTimezone),endsAt=new Date(startsAt.getTime()+a.service.durationMinutes*60000);
   if(startsAt.getTime()<Date.now()+a.service.minimumNoticeMinutes*60000) throw new BadRequestException('New time does not satisfy minimum notice');
   const updated=await this.prisma.$transaction(async tx=>{
