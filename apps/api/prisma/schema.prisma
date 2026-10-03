@@ -74,7 +74,7 @@ model City { id String @id @default(uuid()) @db.Uuid countryId String @db.Uuid n
 model Language { id String @id @default(uuid()) @db.Uuid code String @unique name String nativeName String? active Boolean @default(true) doctorLanguages DoctorLanguage[] @@index([active,name]) }
 model DoctorProfile {
  userId String @id @db.Uuid user User @relation(fields:[userId],references:[id],onDelete:Cascade) displayName String? legalName String? specialtyId String? specialty Specialty? @relation(fields:[specialtyId],references:[id],onDelete:SetNull) bio String? gender String? countryId String? @db.Uuid country Country? @relation(fields:[countryId],references:[id],onDelete:SetNull) cityId String? @db.Uuid city City? @relation(fields:[cityId],references:[id],onDelete:SetNull) timezone String @default("UTC") status DoctorStatus @default(PENDING) ratingAvg Decimal @default(0) @db.Decimal(4,2) ratingCount Int @default(0) verifiedAt DateTime? stripeAccountId String? @unique stripeOnboardingComplete Boolean @default(false)
- verifications DoctorVerification[] licenses MedicalLicense[] languages DoctorLanguage[] services DoctorService[] availabilities Availability[] availabilityExceptions AvailabilityException[] appointments Appointment[] waitlist Waitlist[] payouts DoctorPayout[]
+ verifications DoctorVerification[] licenses MedicalLicense[] languages DoctorLanguage[] services DoctorService[] availabilities Availability[] availabilityExceptions AvailabilityException[] appointments Appointment[] waitlist Waitlist[] payouts DoctorPayout[] monthlyFees DoctorMonthlyFee[]
  reviewsReceived Review[]
  @@index([status,specialtyId,countryId,cityId]) @@index([status,ratingAvg])
 }
