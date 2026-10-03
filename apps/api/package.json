@@ -10,7 +10,8 @@
     "test": "jest --runInBand",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:validate": "prisma validate"
+    "prisma:validate": "prisma validate",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.901.0",
@@ -40,5 +41,19 @@
     "prisma": "^6.16.2",
     "ts-jest": "^29.4.5",
     "typescript": "^5.9.2"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": "./",
+    "testRegex": ".*\\\\.spec\\\\.ts$",
+    "transform": {
+      "^.+\\\\.(t|j)s$": "ts-jest"
+    },
+    "testEnvironment": "node",
+    "clearMocks": true
   }
 }
