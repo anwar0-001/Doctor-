@@ -20,13 +20,13 @@
 - [ ] Production Stripe account/connect configuration and reconciliation
 - [ ] Real video provider with signed short-lived room tokens
 - [ ] Push/email/SMS providers and delivery workers
-- [ ] Malware/antivirus scanning and quarantine for uploads
+- [~] Uploads are explicitly marked pending-scan; external malware scanner/quarantine worker remains required
 - [ ] Managed secrets/KMS and key rotation
 - [ ] Redis-backed distributed throttling and queue workers
 - [ ] WAF, bot/fraud controls, SIEM/security-event pipeline
 - [ ] Managed PostgreSQL backups, restore drills and disaster recovery
 - [ ] Error tracking, metrics, tracing, alerting and SLOs
-- [ ] Full staging E2E, payment, authz, IDOR/BOLA and load testing
+- [~] Security unit coverage exists; full staging E2E, payment, authz, IDOR/BOLA and load testing remain required
 - [ ] Mobile apps with App Attest/Play Integrity and secure storage
 - [ ] Legal/privacy review for GDPR, HIPAA applicability and local medical rules
 - [ ] Clinical safety review for AI/content and prescription workflows
