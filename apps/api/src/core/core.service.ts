@@ -45,13 +45,18 @@ export class CoreService {
    return tx.dispute.create({data:{transactionId:t.id,openedById:userId,reason:dto.reason,details:dto.details}});
   });
  }
- async disputes(){return this.prisma.dispute.findMany({include:{transaction:true,openedBy:{select:{id:true,email:true}}},orderBy:{createdAt:'desc'},take:200});}
- async resolveDispute(id:string,resolution:string){
+ async disputes(){return this.prisma.dispute.findMany({include:{transaction:{select:{id:true,status:true,currency:true,consultationAmount:true,patientPlatformFee:true,refundAmount:true,providerTransactionId:true,createdAt:true}},openedBy:{select:{id:true,email:true}}},orderBy:{createdAt:'desc'},take:200});}
+ async resolveDispute(actorUserId:string,id:string,resolution:string){
   if(!resolution?.trim())throw new BadRequestException('Resolution is required');
   const d=await this.prisma.dispute.findUnique({where:{id}});
   if(!d)throw new NotFoundException('Dispute not found');
   if(d.status===DisputeStatus.RESOLVED||d.status===DisputeStatus.REJECTED)throw new BadRequestException('Dispute already closed');
-  return this.prisma.dispute.update({where:{id},data:{status:DisputeStatus.RESOLVED,resolution:resolution.trim(),resolvedAt:new Date()}});
+  const resolved=await this.prisma.$transaction(async tx=>{
+   const result=await tx.dispute.update({where:{id},data:{status:DisputeStatus.RESOLVED,resolution:resolution.trim(),resolvedAt:new Date()}});
+   await tx.auditLog.create({data:{actorUserId,action:'DISPUTE_RESOLVED',resourceType:'Dispute',resourceId:id,metadata:{transactionId:d.transactionId,resolution:resolution.trim().slice(0,500)}}});
+   return result;
+  });
+  return resolved;
  }
  async notify(userId:string,dto:NotificationDto){return this.prisma.notification.create({data:{userId,channel:NotificationChannel.IN_APP,title:dto.title,body:dto.body,data:(dto.data??{}) as Prisma.InputJsonValue,status:NotificationStatus.SENT,sentAt:new Date()}});}
  async notifications(userId:string){return this.prisma.notification.findMany({where:{userId},orderBy:{createdAt:'desc'},take:100});}
