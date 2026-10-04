@@ -32,4 +32,28 @@ describe('AuthService security', () => {
     await expect(service.refresh('raw')).rejects.toBeInstanceOf(UnauthorizedException);
     expect(prisma.refreshSession.updateMany).toHaveBeenCalled();
   });
+  it('does not reset password lockout state when MFA fails', async () => {
+    const prisma:any = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({
+          id:'u', status:'ACTIVE', passwordHash:'hash', failedLoginCount:3, lockedUntil:null,
+          mfaEnabled:true, mfaSecretEncrypted:'encrypted', roles:[],
+        }),
+        update: jest.fn(),
+      },
+      refreshSession: {},
+    };
+    const config:any = { getOrThrow: jest.fn().mockReturnValue('mfa-key') };
+    const service = new AuthService(prisma, {} as any, config);
+    jest.spyOn(argon2, 'verify').mockResolvedValue(true as never);
+    jest.spyOn(service as any, 'decryptSecret').mockReturnValue('secret');
+    jest.spyOn(require('otplib').authenticator, 'verify').mockReturnValue(false);
+
+    await expect(service.login({
+      email:'a@b.com', password:'correct', mfaCode:'000000',
+    } as any)).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
 });
