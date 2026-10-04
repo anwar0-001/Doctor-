@@ -93,6 +93,20 @@ export class PaymentsService {
          }
        }
      }
+   } else if(event.type==='payout.created'||event.type==='payout.paid'||event.type==='payout.failed'||event.type==='payout.canceled'){
+     const payoutId=obj?.id as string|undefined;
+     const accountId=event?.account as string|undefined;
+     if(payoutId&&accountId){
+       const doctor=await this.prisma.doctorProfile.findUnique({where:{stripeAccountId:accountId},select:{userId:true}});
+       if(doctor){
+         const status=event.type==='payout.paid'?'PAID':event.type==='payout.failed'?'FAILED':event.type==='payout.canceled'?'CANCELED':'PENDING';
+         await this.prisma.doctorBankPayout.upsert({
+           where:{provider_providerPayoutId:{provider:'stripe',providerPayoutId:payoutId}},
+           create:{doctorId:doctor.userId,provider:'stripe',providerPayoutId:payoutId,amount:Number(obj?.amount??0)/100,currency:String(obj?.currency??'').toLowerCase(),status,arrivalDate:obj?.arrival_date?new Date(Number(obj.arrival_date)*1000):null,failureCode:obj?.failure_code??null,failureMessage:obj?.failure_message??null},
+           update:{doctorId:doctor.userId,amount:Number(obj?.amount??0)/100,currency:String(obj?.currency??'').toLowerCase(),status,arrivalDate:obj?.arrival_date?new Date(Number(obj.arrival_date)*1000):null,failureCode:obj?.failure_code??null,failureMessage:obj?.failure_message??null}
+         });
+       }
+     }
    } else if(event.type==='account.updated'){
     const accountId=obj?.id as string|undefined;
     if(accountId) await this.prisma.doctorProfile.updateMany({where:{stripeAccountId:accountId},data:{stripeOnboardingComplete:Boolean(obj?.details_submitted&&obj?.charges_enabled&&obj?.payouts_enabled)}});
