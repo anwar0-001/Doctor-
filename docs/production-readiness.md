@@ -31,3 +31,8 @@
 - [ ] Legal/privacy review for GDPR, HIPAA applicability and local medical rules
 - [ ] Clinical safety review for AI/content and prescription workflows
 - [ ] Production deployment with migrations, rollback and smoke tests
+
+## Latest hardening
+- Added persistent security-event telemetry for login failures, account lockouts, MFA failures, and refresh-token replay attempts.
+- Medical document downloads are blocked in production until the document is explicitly marked CLEAN by the malware-scanning workflow.
+- Security telemetry is best-effort and cannot convert an authentication failure into an application error.
