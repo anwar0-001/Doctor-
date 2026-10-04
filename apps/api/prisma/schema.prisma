@@ -613,7 +613,7 @@ model DoctorPayout {
  doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Restrict)
  transaction Transaction @relation(fields:[transactionId],references:[id],onDelete:Restrict)
 @@unique([transactionId])
- @@unique([provider,providerTransferId])
+ @@index([provider,providerTransferId])
  @@index([doctorId,status])
 }
 model Conversation {
