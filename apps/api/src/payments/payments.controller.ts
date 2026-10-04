@@ -6,7 +6,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { PaymentsService } from './payments.service';
-import { CreatePaymentDto, RefundPaymentDto, CreatePlatformFeeConfigDto, ListTransactionsDto } from './dto/payment.dto';
+import { CreatePaymentDto, RefundPaymentDto, CreatePlatformFeeConfigDto, ListTransactionsDto, DoctorEarningsQueryDto, DoctorPayoutsQueryDto, AdminPayoutsQueryDto } from './dto/payment.dto';
 @ApiTags('payments')
 @Controller('payments')
 export class PaymentsController {
@@ -14,6 +14,22 @@ export class PaymentsController {
  @Post('connect/onboarding') @ApiBearerAuth() @UseGuards(JwtAuthGuard) onboarding(@Req() req:Request&{user:{id:string}},@Body() body:{returnUrl:string;refreshUrl:string}){return this.payments.createConnectOnboarding(req.user.id,body.returnUrl,body.refreshUrl);}
  @Post('intent') @ApiBearerAuth() @UseGuards(JwtAuthGuard) intent(@Req() req:Request&{user:{id:string}},@Body() dto:CreatePaymentDto){return this.payments.createPaymentIntent(req.user.id,dto.appointmentId);}
  @Post('webhook') webhook(@Req() req:Request&{rawBody?:Buffer},@Headers('stripe-signature') signature:string){if(!req.rawBody) throw new Error('Raw request body unavailable');return this.payments.webhook(req.rawBody,signature);}
+ @Get('doctor/earnings')
+ @ApiBearerAuth() @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.DOCTOR)
+ doctorEarnings(@Req() req:Request&{user:{id:string}},@Query() query:DoctorEarningsQueryDto){return this.payments.doctorEarnings(req.user.id,query);}
+
+ @Get('doctor/payouts')
+ @ApiBearerAuth() @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.DOCTOR)
+ doctorPayouts(@Req() req:Request&{user:{id:string}},@Query() query:DoctorPayoutsQueryDto){return this.payments.doctorPayouts(req.user.id,query);}
+
+ @Get('admin/payouts')
+ @ApiBearerAuth() @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.FINANCE)
+ adminPayouts(@Query() query:AdminPayoutsQueryDto){return this.payments.adminPayouts(query);}
+
+ @Post('admin/reconcile-payout/:transactionId')
+ @ApiBearerAuth() @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.FINANCE)
+ reconcilePayout(@Req() req:Request&{user:{id:string}},@Param('transactionId') id:string){return this.payments.reconcilePayout(req.user.id,id);}
+
  @Get('admin/transactions')
  @ApiBearerAuth() @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.FINANCE)
  listTransactions(@Query() query:ListTransactionsDto){return this.payments.listTransactions(query);}
