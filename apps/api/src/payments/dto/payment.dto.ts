@@ -33,3 +33,5 @@ export class DoctorPayoutsQueryDto extends DoctorEarningsQueryDto {
 export class AdminPayoutsQueryDto extends DoctorPayoutsQueryDto {
   @IsOptional() @IsString() doctorId?: string;
 }
+
+export class AdminBankPayoutsQueryDto extends DoctorPayoutsQueryDto { @IsOptional() @IsString() doctorId?: string; }
