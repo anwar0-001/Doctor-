@@ -10,6 +10,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { CoreModule } from './core/core.module';
 import { PatientModule } from './patient/patient.module';
+import { SecurityModule } from './security/security.module';
 import { HealthController } from './health.controller';
-@Module({imports:[ConfigModule.forRoot({isGlobal:true,cache:true}),ThrottlerModule.forRoot([{name:'default',ttl:60000,limit:60}]),PrismaModule,AuthModule,DoctorsModule,CalendarModule,PaymentsModule,MessagingModule,CoreModule,PatientModule],controllers:[HealthController],providers:[{provide:APP_GUARD,useClass:ThrottlerGuard}]})
+@Module({imports:[ConfigModule.forRoot({isGlobal:true,cache:true}),ThrottlerModule.forRoot([{name:'default',ttl:60000,limit:60}]),PrismaModule,AuthModule,DoctorsModule,CalendarModule,PaymentsModule,MessagingModule,CoreModule,PatientModule,SecurityModule],controllers:[HealthController],providers:[{provide:APP_GUARD,useClass:ThrottlerGuard}]})
 export class AppModule {}
