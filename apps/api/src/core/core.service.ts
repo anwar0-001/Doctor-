@@ -1,10 +1,11 @@
 import { BadRequestException,ForbiddenException,Injectable,NotFoundException } from '@nestjs/common';
 import { Prisma,AdStatus,DisputeStatus,HealthArticleStatus,NotificationChannel,NotificationStatus,ReviewStatus,SubscriptionStatus,SubscriptionTier,VideoProvider,VideoSessionStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaymentsService } from '../payments/payments.service';
 import { CreatePlanDto,DisputeDto,NotificationDto,ReviewDto,SubscribeDto,VideoDto } from './core.dto';
 @Injectable()
 export class CoreService {
- constructor(private readonly prisma:PrismaService){}
+ constructor(private readonly prisma:PrismaService,private readonly payments:PaymentsService){}
  async plans(){return this.prisma.subscriptionPlan.findMany({where:{active:true},orderBy:{price:'asc'}});}
  async createPlan(dto:CreatePlanDto){return this.prisma.subscriptionPlan.create({data:{...dto,price:dto.price,features:(dto.features??{}) as Prisma.InputJsonValue}});}
  async subscribe(userId:string,dto:SubscribeDto){
@@ -46,17 +47,22 @@ export class CoreService {
   });
  }
  async disputes(){return this.prisma.dispute.findMany({include:{transaction:{select:{id:true,status:true,currency:true,consultationAmount:true,patientPlatformFee:true,refundAmount:true,providerTransactionId:true,createdAt:true}},openedBy:{select:{id:true,email:true}}},orderBy:{createdAt:'desc'},take:200});}
- async resolveDispute(actorUserId:string,id:string,resolution:string){
+ async resolveDispute(actorUserId:string,id:string,action:'REFUND'|'PARTIAL_REFUND'|'REJECT',resolution:string,amount?:number){
   if(!resolution?.trim())throw new BadRequestException('Resolution is required');
-  const d=await this.prisma.dispute.findUnique({where:{id}});
-  if(!d)throw new NotFoundException('Dispute not found');
+  const d=await this.prisma.dispute.findUnique({where:{id}}); if(!d)throw new NotFoundException('Dispute not found');
   if(d.status===DisputeStatus.RESOLVED||d.status===DisputeStatus.REJECTED)throw new BadRequestException('Dispute already closed');
-  const resolved=await this.prisma.$transaction(async tx=>{
-   const result=await tx.dispute.update({where:{id},data:{status:DisputeStatus.RESOLVED,resolution:resolution.trim(),resolvedAt:new Date()}});
-   await tx.auditLog.create({data:{actorUserId,action:'DISPUTE_RESOLVED',resourceType:'Dispute',resourceId:id,metadata:{transactionId:d.transactionId,resolution:resolution.trim().slice(0,500)}}});
-   return result;
-  });
-  return resolved;
+  if(action==='REFUND'||action==='PARTIAL_REFUND'){
+   if(action==='PARTIAL_REFUND'&&amount==null)throw new BadRequestException('Partial refund amount is required');
+   const result=await this.payments.refundTransaction(actorUserId,d.transactionId,action==='REFUND'?undefined:amount,resolution.trim());
+   await this.prisma.dispute.update({where:{id},data:{status:DisputeStatus.RESOLVED,resolution:resolution.trim(),resolvedAt:new Date()}});
+   await this.prisma.auditLog.create({data:{actorUserId,action:'DISPUTE_RESOLVED',resourceType:'Dispute',resourceId:id,metadata:{transactionId:d.transactionId,decision:action,refundId:result.refundId,amount:result.amount}}});
+   return {disputeId:id,decision:action,...result};
+  }
+  const tx=await this.prisma.transaction.findUnique({where:{id:d.transactionId}}); if(!tx)throw new NotFoundException('Transaction not found');
+  const charged=Number(tx.consultationAmount)+Number(tx.patientPlatformFee),refunded=Number(tx.refundAmount);
+  const restored=refunded>0?PaymentStatus.PARTIALLY_REFUNDED:PaymentStatus.SUCCEEDED;
+  await this.prisma.$transaction([this.prisma.transaction.update({where:{id:tx.id},data:{status:restored}}),this.prisma.dispute.update({where:{id},data:{status:DisputeStatus.REJECTED,resolution:resolution.trim(),resolvedAt:new Date()}}),this.prisma.auditLog.create({data:{actorUserId,action:'DISPUTE_REJECTED',resourceType:'Dispute',resourceId:id,metadata:{transactionId:d.transactionId,decision:'REJECT',charged,refunded}}})]);
+  return {disputeId:id,decision:'REJECT',transactionStatus:restored};
  }
  async notify(userId:string,dto:NotificationDto){return this.prisma.notification.create({data:{userId,channel:NotificationChannel.IN_APP,title:dto.title,body:dto.body,data:(dto.data??{}) as Prisma.InputJsonValue,status:NotificationStatus.SENT,sentAt:new Date()}});}
  async notifications(userId:string){return this.prisma.notification.findMany({where:{userId},orderBy:{createdAt:'desc'},take:100});}
