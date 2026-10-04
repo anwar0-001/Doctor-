@@ -25,3 +25,8 @@ Implemented in the production-foundation branch:
 
 ### Remaining external/production launch dependencies
 The repository intentionally does not fake third-party infrastructure. Before a real launch, production credentials/configuration and integration work are still required for the selected video provider, email/SMS/push delivery, malware scanning, WAF/bot protection, managed secrets, backups/disaster recovery, observability, mobile apps, legal/privacy review, and a full staging/E2E/security/payment certification run.
+
+
+### Latest security hardening
+- Persistent security-event telemetry for authentication failures, account lockouts, MFA failures, and refresh-token replay.
+- Medical documents have explicit malware-scan states; production downloads require a CLEAN result before a signed URL is issued.
