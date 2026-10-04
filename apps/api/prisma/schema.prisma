@@ -598,6 +598,24 @@ model DoctorMonthlyFee {
  @@unique([doctorId,periodStart,periodEnd,currency])
  @@index([doctorId,status,periodStart])
 }
+model DoctorBankPayout {
+  id String @id @default(uuid()) @db.Uuid
+  doctorId String @db.Uuid
+  provider String
+  providerPayoutId String
+  amount Decimal @db.Decimal(12,2)
+  currency String
+  status String
+  arrivalDate DateTime?
+  failureCode String?
+  failureMessage String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  doctor DoctorProfile @relation(fields:[doctorId],references:[userId],onDelete:Restrict)
+  @@unique([provider,providerPayoutId])
+  @@index([doctorId,status,createdAt])
+}
+
 model DoctorPayout {
  id String @id @default(uuid()) @db.Uuid
  doctorId String @db.Uuid
