@@ -56,7 +56,13 @@ export class PaymentsService {
   const claimed=await this.prisma.paymentWebhookEvent.updateMany({where:{provider_eventId:{provider,eventId},processedAt:null,status:'RECEIVED'},data:{status:'PROCESSING'}});if(claimed.count!==1)return {received:true,duplicate:true};
   try{
    const obj=event.data?.object as any;const txId=obj?.metadata?.transactionId as string|undefined;
-   if(event.type==='account.updated'){
+   if(event.type==='charge.refunded'){
+    const paymentIntentId=obj?.payment_intent as string|undefined;
+    if(paymentIntentId){const tx=await this.prisma.transaction.findFirst({where:{provider:'stripe',providerTransactionId:paymentIntentId}});if(tx){const charged=Number(tx.consultationAmount)+Number(tx.patientPlatformFee);const refunded=Math.min(charged,Number(obj?.amount_refunded??0)/100);const status=refunded>=charged?PaymentStatus.REFUNDED:refunded>0?PaymentStatus.PARTIALLY_REFUNDED:tx.status;await this.prisma.transaction.update({where:{id:tx.id},data:{refundAmount:refunded,status}});}}
+   } else if(event.type==='refund.updated'){
+    const paymentIntentId=obj?.payment_intent as string|undefined;
+    if(paymentIntentId&&obj?.status==='succeeded'){const tx=await this.prisma.transaction.findFirst({where:{provider:'stripe',providerTransactionId:paymentIntentId}});if(tx){const charged=Number(tx.consultationAmount)+Number(tx.patientPlatformFee);const amount=Number(obj?.amount??0)/100;const total=Math.min(charged,Number(tx.refundAmount)+amount);const status=total>=charged?PaymentStatus.REFUNDED:PaymentStatus.PARTIALLY_REFUNDED;await this.prisma.transaction.update({where:{id:tx.id},data:{refundAmount:total,status}});}}
+   } else if(event.type==='account.updated'){
     const accountId=obj?.id as string|undefined;
     if(accountId) await this.prisma.doctorProfile.updateMany({where:{stripeAccountId:accountId},data:{stripeOnboardingComplete:Boolean(obj?.details_submitted&&obj?.charges_enabled&&obj?.payouts_enabled)}});
    } else if(txId && event.type==='payment_intent.succeeded'){await this.prisma.$transaction([this.prisma.transaction.update({where:{id:txId},data:{status:PaymentStatus.SUCCEEDED}}),this.prisma.appointment.updateMany({where:{id:obj.metadata.appointmentId,status:AppointmentStatus.PENDING},data:{status:AppointmentStatus.CONFIRMED}})]);}
@@ -145,6 +151,18 @@ export class PaymentsService {
    this.prisma.transaction.count({where}),
   ]);
   return {items,total,page,pageSize,pageCount:Math.ceil(total/pageSize)};
+ }
+ async reconcileRefund(actorUserId:string,transactionId:string){
+  const tx=await this.prisma.transaction.findUnique({where:{id:transactionId}}); if(!tx)throw new NotFoundException('Transaction not found');
+  if(tx.provider!=='stripe'||!tx.providerTransactionId)throw new ConflictException('Transaction cannot be reconciled');
+  const remote:any=await this.stripe('payment_intents/'+tx.providerTransactionId+'?expand[]=latest_charge','GET');
+  const charge=remote?.latest_charge; const refunded=Number(charge?.amount_refunded??0)/100;
+  const charged=Number(tx.consultationAmount)+Number(tx.patientPlatformFee); const capped=Math.min(charged,Math.max(0,refunded));
+  const next=capped>=charged&&charged>0?PaymentStatus.REFUNDED:capped>0?PaymentStatus.PARTIALLY_REFUNDED:tx.status;
+  const changed=Number(tx.refundAmount)!==capped||([PaymentStatus.REFUNDED,PaymentStatus.PARTIALLY_REFUNDED].includes(next)&&tx.status!==next);
+  if(changed) await this.prisma.$transaction([this.prisma.transaction.update({where:{id:tx.id},data:{refundAmount:capped,status:next}}),this.prisma.auditLog.create({data:{actorUserId,action:'REFUND_RECONCILED',resourceType:'Transaction',resourceId:tx.id,metadata:{previousRefund:String(tx.refundAmount),remoteRefund:String(capped),remoteStatus:remote?.status??'unknown',newStatus:next}}})]);
+  else await this.prisma.auditLog.create({data:{actorUserId,action:'REFUND_RECONCILIATION_CHECKED',resourceType:'Transaction',resourceId:tx.id,metadata:{refund:String(capped),status:tx.status}}});
+  return {transactionId:tx.id,localRefund:Number(tx.refundAmount),remoteRefund:capped,localStatus:next,changed};
  }
  async reconcileTransaction(actorUserId:string,transactionId:string){
   const tx=await this.prisma.transaction.findUnique({where:{id:transactionId}});
