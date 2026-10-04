@@ -98,4 +98,21 @@ export class PaymentsService {
   ]);
   return {refundId:refund.id,amount,refundTotal:newRefundTotal,remaining:Number(Math.max(0,charged-newRefundTotal).toFixed(2))};
  }
+ async listFeeConfigs(){
+  return this.prisma.platformFeeConfig.findMany({orderBy:{effectiveFrom:'desc'}});
+ }
+ async createFeeConfig(actorUserId:string,dto:{name:string;patientPercent:number;doctorPercent:number;monthlyDoctorPercent:number;effectiveFrom:string;note?:string}){
+  const effectiveFrom=new Date(dto.effectiveFrom);
+  if(Number.isNaN(effectiveFrom.getTime())) throw new BadRequestException('Invalid effectiveFrom');
+  const values=[dto.patientPercent,dto.doctorPercent,dto.monthlyDoctorPercent];
+  if(values.some(v=>!Number.isFinite(v)||v<0||v>100)) throw new BadRequestException('Fee percentages must be between 0 and 100');
+  if(dto.patientPercent+dto.doctorPercent>100) throw new BadRequestException('Combined patient and doctor fee cannot exceed 100%');
+  if(!dto.name.trim()) throw new BadRequestException('Fee configuration name is required');
+  const duplicate=await this.prisma.platformFeeConfig.findFirst({where:{effectiveFrom}});
+  if(duplicate) throw new ConflictException('A fee configuration already exists at this effective time');
+  const config=await this.prisma.platformFeeConfig.create({data:{name:dto.name.trim(),patientPercent:dto.patientPercent,doctorPercent:dto.doctorPercent,monthlyDoctorPercent:dto.monthlyDoctorPercent,effectiveFrom}});
+  await this.prisma.auditLog.create({data:{actorUserId,action:'PLATFORM_FEE_CONFIG_CREATED',resourceType:'PlatformFeeConfig',resourceId:config.id,metadata:{name:config.name,patientPercent:String(config.patientPercent),doctorPercent:String(config.doctorPercent),monthlyDoctorPercent:String(config.monthlyDoctorPercent),effectiveFrom:effectiveFrom.toISOString(),note:dto.note?.slice(0,500)}}});
+  return config;
+ }
+
 }
