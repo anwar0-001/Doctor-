@@ -10,6 +10,8 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AccessTokenPayload } from './auth.types';
 import { ACCESS_TOKEN_TTL_SECONDS, MAX_ACTIVE_SESSIONS, REFRESH_TOKEN_TTL_DAYS } from './auth.constants';
+import { SecurityEventsService } from '../security/security-events.service';
+import { SecurityEventSeverity, SecurityEventType } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -17,6 +19,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly securityEvents?: SecurityEventsService,
   ) {}
 
   private hashToken(token: string): string {
@@ -86,14 +89,29 @@ export class AuthService {
     const valid = await argon2.verify(user.passwordHash, dto.password);
     if (!valid) {
       const next = user.failedLoginCount + 1;
-      await this.prisma.user.update({ where: { id: user.id }, data: { failedLoginCount: next >= 5 ? 0 : next, lockedUntil: next >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null } });
+      const locked = next >= 5;
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginCount: locked ? 0 : next, lockedUntil: locked ? new Date(Date.now() + 15 * 60 * 1000) : null },
+      });
+      void this.securityEvents?.record(
+        locked ? SecurityEventType.LOGIN_LOCKED : SecurityEventType.LOGIN_FAILURE,
+        { userId: user.id, ipAddress: ip, userAgent, metadata: { failedAttemptCount: next } },
+        locked ? SecurityEventSeverity.CRITICAL : SecurityEventSeverity.WARNING,
+      );
       throw new UnauthorizedException('Invalid credentials');
     }
     if (user.mfaEnabled) {
-      if (!dto.mfaCode || !user.mfaSecretEncrypted) throw new UnauthorizedException('MFA code required');
+      if (!dto.mfaCode || !user.mfaSecretEncrypted) {
+        void this.securityEvents?.record(SecurityEventType.MFA_FAILURE, { userId: user.id, ipAddress: ip, userAgent });
+        throw new UnauthorizedException('MFA code required');
+      }
       const secret = this.config.getOrThrow<string>('MFA_ENCRYPTION_KEY');
       const decrypted = this.decryptSecret(user.mfaSecretEncrypted, secret);
-      if (!authenticator.verify({ token: dto.mfaCode, secret: decrypted })) throw new UnauthorizedException('Invalid MFA code');
+      if (!authenticator.verify({ token: dto.mfaCode, secret: decrypted })) {
+        void this.securityEvents?.record(SecurityEventType.MFA_FAILURE, { userId: user.id, ipAddress: ip, userAgent });
+        throw new UnauthorizedException('Invalid MFA code');
+      }
     }
 
     // Reset the password-failure state only after every authentication factor succeeds.
@@ -114,7 +132,14 @@ export class AuthService {
 
     const rotatedAt = new Date();
     const revoked = await this.prisma.refreshSession.updateMany({ where: { id: session.id, revokedAt: null }, data: { revokedAt: rotatedAt, revokeReason: 'rotated' } });
-    if (revoked.count !== 1) throw new UnauthorizedException('Refresh token already used');
+    if (revoked.count !== 1) {
+      void this.securityEvents?.record(
+        SecurityEventType.REFRESH_REPLAY,
+        { userId: session.userId, ipAddress: ip, userAgent },
+        SecurityEventSeverity.CRITICAL,
+      );
+      throw new UnauthorizedException('Refresh token already used');
+    }
     const replacement = await this.issueTokens(session.userId, session.user.roles.map((r) => r.role), userAgent, ip);
     const replacementSession = await this.prisma.refreshSession.findFirst({ where: { tokenHash: this.hashToken(replacement.refreshToken) }, select: { id: true } });
     if (replacementSession) await this.prisma.refreshSession.update({ where: { id: session.id }, data: { replacedBySessionId: replacementSession.id } });
