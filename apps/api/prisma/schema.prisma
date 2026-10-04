@@ -160,6 +160,9 @@ model User {
  passwordHash String
  status UserStatus @default(ACTIVE)
  mfaEnabled Boolean @default(false)
+ failedLoginCount Int @default(0)
+ lockedUntil DateTime?
+ lastLoginAt DateTime?
  mfaSecretEncrypted String?
  emailVerifiedAt DateTime?
  stripeCustomerId String? @unique
