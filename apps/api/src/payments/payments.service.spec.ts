@@ -13,6 +13,8 @@ describe('PaymentsService refunds', () => {
         }],
       })},
       transaction: { update: jest.fn().mockResolvedValue({}) },
+      auditLog: { create: jest.fn().mockResolvedValue({}) },
+      $transaction: jest.fn().mockResolvedValue([]),
     };
     const config:any = { get: jest.fn() };
     const service = new PaymentsService(prisma, config);
@@ -50,5 +52,25 @@ describe('PaymentsService refunds', () => {
     };
     const service = new PaymentsService(prisma, {} as any);
     await expect(service.refund('patient','a','again')).rejects.toBeInstanceOf(ConflictException);
+  });
+});
+
+
+describe('PaymentsService payout reconciliation', () => {
+  it('records the Stripe destination transfer as the doctor payout ledger entry', async () => {
+    const prisma:any = {
+      transaction: { findUnique: jest.fn().mockResolvedValue({
+        id:'tx', provider:'stripe', providerTransactionId:'pi_1', currency:'usd',
+        appointment:{doctorId:'doctor',doctor:{doctor:{stripeAccountId:'acct_1'}}},
+      })},
+      doctorPayout: { upsert: jest.fn().mockResolvedValue({id:'payout_1',currency:'usd'}) },
+      auditLog: { create: jest.fn().mockResolvedValue({}) },
+    };
+    const config:any = { get: jest.fn() };
+    const service = new PaymentsService(prisma, config);
+    jest.spyOn(service as any,'stripe').mockResolvedValue({latest_charge:{transfer:{id:'tr_1',amount:8000,currency:'usd',destination:'acct_1'}}});
+    const result=await service.reconcilePayout('admin','tx');
+    expect(prisma.doctorPayout.upsert).toHaveBeenCalledWith(expect.objectContaining({where:{transactionId:'tx'},create:expect.objectContaining({doctorId:'doctor',providerTransferId:'tr_1',amount:80,status:'TRANSFERRED'})}));
+    expect(result.transferId).toBe('tr_1');
   });
 });
