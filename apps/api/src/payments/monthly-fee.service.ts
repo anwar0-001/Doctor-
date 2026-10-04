@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { PaymentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -23,9 +23,16 @@ export class MonthlyFeeService {
     }, 0);
     const percent = Number(fee.monthlyDoctorPercent);
     const amount = Number((gross * percent / 100).toFixed(2));
+    const normalizedCurrency = currency.toLowerCase();
+    const existing = await this.prisma.doctorMonthlyFee.findUnique({
+      where: { doctorId_periodStart_periodEnd_currency: { doctorId, periodStart, periodEnd, currency: normalizedCurrency } },
+    });
+    if (existing && existing.status !== 'OPEN') {
+      throw new ConflictException('Monthly fee is already finalized');
+    }
     return this.prisma.doctorMonthlyFee.upsert({
-      where: { doctorId_periodStart_periodEnd_currency: { doctorId, periodStart, periodEnd, currency: currency.toLowerCase() } },
-      create: { doctorId, periodStart, periodEnd, currency: currency.toLowerCase(), grossEarnings: gross, feePercent: percent, feeAmount: amount },
+      where: { doctorId_periodStart_periodEnd_currency: { doctorId, periodStart, periodEnd, currency: normalizedCurrency } },
+      create: { doctorId, periodStart, periodEnd, currency: normalizedCurrency, grossEarnings: gross, feePercent: percent, feeAmount: amount },
       update: { grossEarnings: gross, feePercent: percent, feeAmount: amount },
     });
   }
