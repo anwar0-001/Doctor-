@@ -19,6 +19,7 @@
 
 ## Required before a real launch
 - [ ] Production Stripe account/connect configuration, live webhook registration and bank-payout reconciliation
+- [x] Connected-account bank payout ledger, payout webhooks and admin reconciliation API
 - [ ] Real video provider with signed short-lived room tokens
 - [ ] Push/email/SMS providers and delivery workers
 - [~] Uploads are explicitly marked pending-scan; external malware scanner/quarantine worker remains required
@@ -42,3 +43,5 @@
 - Destination-charge transfers are recorded as `providerTransferId` on `DoctorPayout`; `providerPayoutId` remains reserved for a future Stripe bank-payout ledger.
 - `refund.updated` is reconciled against Stripe's cumulative `amount_refunded` instead of incrementing the local total, preventing duplicate-event overcounting.
 - Doctor-facing earnings/payout endpoints never expose patient identity or medical data.
+
+- Bank payouts from connected Stripe accounts are stored separately from platform-to-doctor destination transfers, preserving a clean two-stage financial ledger.
