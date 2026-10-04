@@ -1,4 +1,5 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { MonthlyFeeService } from './monthly-fee.service';
@@ -15,7 +16,7 @@ export class MonthlyFeeController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.FINANCE)
-  calculate(@Body() body: { doctorId: string; periodStart: string; periodEnd: string; currency: string }) {
+  calculate(@Req() req: Request & { user: { id: string } }, @Body() body: { doctorId: string; periodStart: string; periodEnd: string; currency: string }) {
     return this.fees.calculate(body.doctorId, new Date(body.periodStart), new Date(body.periodEnd), body.currency);
   }
 }
