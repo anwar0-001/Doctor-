@@ -52,7 +52,7 @@ export class PaymentsService {
   this.verifySignature(payload,signature);let event:any;try{event=JSON.parse(payload.toString('utf8'));}catch{throw new BadRequestException('Invalid webhook payload');}
   const provider='stripe',eventId=event.id;if(!eventId)throw new BadRequestException('Missing event id');
   const existing=await this.prisma.paymentWebhookEvent.findUnique({where:{provider_eventId:{provider,eventId}}});if(existing?.processedAt)return {received:true,duplicate:true};
-  await this.prisma.paymentWebhookEvent.upsert({where:{provider_eventId:{provider,eventId}},create:{provider,eventId,payload:event},update:{payload:event,status:'RECEIVED'}});
+  await this.prisma.paymentWebhookEvent.upsert({where:{provider_eventId:{provider,eventId}},create:{provider,eventId,payload:event},update:{payload:event}});
   const claimed=await this.prisma.paymentWebhookEvent.updateMany({where:{provider_eventId:{provider,eventId},processedAt:null,status:'RECEIVED'},data:{status:'PROCESSING'}});if(claimed.count!==1)return {received:true,duplicate:true};
   try{
    const obj=event.data?.object as any;const txId=obj?.metadata?.transactionId as string|undefined;
