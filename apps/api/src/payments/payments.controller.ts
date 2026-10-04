@@ -6,7 +6,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { PaymentsService } from './payments.service';
-import { CreatePaymentDto, RefundPaymentDto, CreatePlatformFeeConfigDto, ListTransactionsDto, DoctorEarningsQueryDto, DoctorPayoutsQueryDto, AdminPayoutsQueryDto } from './dto/payment.dto';
+import { CreatePaymentDto, RefundPaymentDto, CreatePlatformFeeConfigDto, ListTransactionsDto, DoctorEarningsQueryDto, DoctorPayoutsQueryDto, AdminPayoutsQueryDto, AdminBankPayoutsQueryDto } from './dto/payment.dto';
 @ApiTags('payments')
 @Controller('payments')
 export class PaymentsController {
@@ -21,6 +21,18 @@ export class PaymentsController {
  @Get('doctor/payouts')
  @ApiBearerAuth() @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.DOCTOR)
  doctorPayouts(@Req() req:Request&{user:{id:string}},@Query() query:DoctorPayoutsQueryDto){return this.payments.doctorPayouts(req.user.id,query);}
+
+ @Get('doctor/bank-payouts')
+ @ApiBearerAuth() @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.DOCTOR)
+ doctorBankPayouts(@Req() req:Request&{user:{id:string}},@Query() query:DoctorPayoutsQueryDto){return this.payments.doctorBankPayouts(req.user.id,query);}
+
+ @Get('admin/bank-payouts')
+ @ApiBearerAuth() @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.FINANCE)
+ adminBankPayouts(@Query() query:AdminBankPayoutsQueryDto){return this.payments.adminBankPayouts(query);}
+
+ @Post('admin/reconcile-bank-payout/:payoutId')
+ @ApiBearerAuth() @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.FINANCE)
+ reconcileBankPayout(@Req() req:Request&{user:{id:string}},@Param('payoutId') id:string){return this.payments.reconcileBankPayout(req.user.id,id);}
 
  @Get('admin/payouts')
  @ApiBearerAuth() @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.FINANCE)
