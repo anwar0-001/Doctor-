@@ -17,6 +17,6 @@ export class MonthlyFeeController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.FINANCE)
   calculate(@Req() req: Request & { user: { id: string } }, @Body() body: { doctorId: string; periodStart: string; periodEnd: string; currency: string }) {
-    return this.fees.calculate(body.doctorId, new Date(body.periodStart), new Date(body.periodEnd), body.currency);
+    return this.fees.calculate(body.doctorId, new Date(body.periodStart), new Date(body.periodEnd), body.currency, req.user.id);
   }
 }
