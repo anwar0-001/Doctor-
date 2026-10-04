@@ -18,7 +18,8 @@ Implemented in the production-foundation branch:
 - Auth with Argon2id, MFA/TOTP, short-lived access tokens, refresh rotation/replay protection, session caps and login lockout.
 - Doctor verification workflow and verified-only discovery/booking/payment gates.
 - Time-zone aware availability, booking idempotency and double-booking protection.
-- Stripe Connect payment intents, signed webhooks, webhook idempotency and fee snapshots.
+- Stripe Connect payment intents, signed webhooks, webhook idempotency, cumulative refund reconciliation, destination-transfer reconciliation and immutable fee snapshots.
+- Doctor earnings/payout ledgers with safe doctor-only financial views and admin reconciliation endpoints.
 - Monthly doctor fee ledger using the configured monthly percentage and unique doctor/period/currency periods.
 - RBAC, ownership checks, audit logging, encrypted messaging and private medical-document access controls.
 - IDOR-focused tests across reviews, disputes, notifications, video sessions, messaging and authentication.
