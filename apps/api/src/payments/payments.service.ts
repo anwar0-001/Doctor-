@@ -98,6 +98,24 @@ export class PaymentsService {
   ]);
   return {refundId:refund.id,amount,refundTotal:newRefundTotal,remaining:Number(Math.max(0,charged-newRefundTotal).toFixed(2))};
  }
+ async refundTransaction(actorUserId:string,transactionId:string,amount?:number,reason='Dispute resolution'){
+  const tx=await this.prisma.transaction.findUnique({where:{id:transactionId}});
+  if(!tx?.providerTransactionId) throw new ConflictException('No refundable payment found');
+  if(![PaymentStatus.SUCCEEDED,PaymentStatus.PARTIALLY_REFUNDED,PaymentStatus.DISPUTED].includes(tx.status)) throw new ConflictException('Transaction is not refundable');
+  const charged=Number(tx.consultationAmount)+Number(tx.patientPlatformFee),already=Number(tx.refundAmount);
+  const remaining=Math.max(0,Number((charged-already).toFixed(2)));
+  const requested=amount==null?remaining:Number(amount);
+  if(!Number.isFinite(requested)||requested<=0||requested>remaining) throw new BadRequestException('Invalid refund amount');
+  const amountMinor=Math.round(requested*100),idempotencyKey='refund:'+tx.id+':'+amountMinor;
+  const refund=await this.stripe('refunds','POST',{payment_intent:tx.providerTransactionId,amount:amountMinor,refund_application_fee:'true',reason:'requested_by_customer',metadata:{transactionId:tx.id,reason:reason.slice(0,500)}},{'Idempotency-Key':idempotencyKey});
+  const refunded=Number(refund.amount??0)/100,newTotal=Number((already+refunded).toFixed(2));
+  const status=newTotal>=charged?PaymentStatus.REFUNDED:PaymentStatus.PARTIALLY_REFUNDED;
+  await this.prisma.$transaction([
+   this.prisma.transaction.update({where:{id:tx.id},data:{status,refundAmount:newTotal}}),
+   this.prisma.auditLog.create({data:{actorUserId,action:'PAYMENT_REFUNDED',resourceType:'Transaction',resourceId:tx.id,metadata:{refundId:refund.id,amount:refunded,refundTotal:newTotal,reason:reason.slice(0,500)}}}),
+  ]);
+  return {refundId:refund.id,amount:refunded,refundTotal:newTotal,remaining:Number(Math.max(0,charged-newTotal).toFixed(2))};
+ }
  async listFeeConfigs(){
   return this.prisma.platformFeeConfig.findMany({orderBy:{effectiveFrom:'desc'}});
  }
