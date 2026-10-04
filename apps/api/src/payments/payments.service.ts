@@ -9,9 +9,9 @@ type StripeResponse={id:string;client_secret?:string;status?:string;url?:string;
 export class PaymentsService {
  constructor(private readonly prisma:PrismaService,private readonly config:ConfigService){}
  private key(){const k=this.config.get<string>('STRIPE_SECRET_KEY');if(!k)throw new ConflictException('Stripe is not configured');return k;}
- private async stripe(path:string,method:'GET'|'POST',body?:Record<string,unknown>){
+ private async stripe(path:string,method:'GET'|'POST',body?:Record<string,unknown>,headers:Record<string,string>={}){
   const params=new URLSearchParams(); if(body) for(const [k,v] of Object.entries(body)){if(Array.isArray(v)) for(const x of v) params.append(k+'[]',String(x)); else params.append(k,String(v));}
-  const res=await fetch('https://api.stripe.com/v1/'+path,{method,headers:{Authorization:'Bearer '+this.key(),'Content-Type':'application/x-www-form-urlencoded'},body:method==='POST'?params:undefined});
+  const res=await fetch('https://api.stripe.com/v1/'+path,{method,headers:{Authorization:'Bearer '+this.key(),'Content-Type':'application/x-www-form-urlencoded',...headers},body:method==='POST'?params:undefined});
   const data=await res.json() as any;if(!res.ok) throw new ConflictException(data?.error?.message??'Stripe request failed');return data as StripeResponse;
  }
  async createConnectOnboarding(userId:string,returnUrl:string,refreshUrl:string){
@@ -68,11 +68,31 @@ export class PaymentsService {
   return {received:true};
  }
  async refund(userId:string,appointmentId:string,reason:string){
-  const a=await this.prisma.appointment.findUnique({where:{id:appointmentId},include:{transactions:{where:{status:PaymentStatus.SUCCEEDED},orderBy:{createdAt:'desc'}}}});
-  if(!a)throw new NotFoundException('Appointment not found');if(a.patientId!==userId&&a.doctorId!==userId)throw new UnauthorizedException();
-  const tx=a.transactions[0];if(!tx?.providerTransactionId)throw new ConflictException('No successful payment found');
-  const refund=await this.stripe('refunds','POST',{payment_intent:tx.providerTransactionId,reason:'requested_by_customer',metadata:{transactionId:tx.id,reason}}); if(tx.providerFeeId){try{await this.stripe('application_fees/'+tx.providerFeeId+'/refunds','POST',{});}catch{}}
-  const amount=Number(refund.amount??0)/100;await this.prisma.transaction.update({where:{id:tx.id},data:{status:amount>=Number(tx.consultationAmount)+Number(tx.patientPlatformFee)?PaymentStatus.REFUNDED:PaymentStatus.PARTIALLY_REFUNDED,refundAmount:amount}});
-  return {refundId:refund.id,amount};
+  const a=await this.prisma.appointment.findUnique({
+    where:{id:appointmentId},
+    include:{transactions:{where:{status:{in:[PaymentStatus.SUCCEEDED,PaymentStatus.PARTIALLY_REFUNDED]},orderBy:{createdAt:'desc'}}}},
+  });
+  if(!a)throw new NotFoundException('Appointment not found');
+  if(a.patientId!==userId&&a.doctorId!==userId)throw new UnauthorizedException();
+  const tx=a.transactions[0];
+  if(!tx?.providerTransactionId)throw new ConflictException('No refundable payment found');
+  const charged=Number(tx.consultationAmount)+Number(tx.patientPlatformFee);
+  const alreadyRefunded=Number(tx.refundAmount);
+  const remaining=Math.max(0,Number((charged-alreadyRefunded).toFixed(2)));
+  if(remaining<=0)throw new ConflictException('Payment is already fully refunded');
+  const amountMinor=Math.round(remaining*100);
+  const idempotencyKey='refund:'+tx.id+':'+amountMinor;
+  const refund=await this.stripe('refunds','POST',{
+    payment_intent:tx.providerTransactionId,
+    amount:amountMinor,
+    refund_application_fee:'true',
+    reason:'requested_by_customer',
+    metadata:{transactionId:tx.id,reason:reason.slice(0,500)},
+  },{'Idempotency-Key':idempotencyKey});
+  const amount=Number(refund.amount??0)/100;
+  const newRefundTotal=Number((alreadyRefunded+amount).toFixed(2));
+  const status=newRefundTotal>=charged?PaymentStatus.REFUNDED:PaymentStatus.PARTIALLY_REFUNDED;
+  await this.prisma.transaction.update({where:{id:tx.id},data:{status,refundAmount:newRefundTotal}});
+  return {refundId:refund.id,amount,refundTotal:newRefundTotal,remaining:Number(Math.max(0,charged-newRefundTotal).toFixed(2))};
  }
 }
