@@ -153,6 +153,27 @@ enum HealthArticleStatus {
   PUBLISHED
   ARCHIVED
 }
+enum SecurityEventType {
+  LOGIN_FAILURE
+  LOGIN_LOCKED
+  MFA_FAILURE
+  REFRESH_REPLAY
+  UNAUTHORIZED_ACCESS
+  PAYMENT_SECURITY_FAILURE
+  MEDICAL_DOCUMENT_SECURITY_FAILURE
+  ACCOUNT_SECURITY_CHANGE
+}
+enum SecurityEventSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+enum MedicalScanStatus {
+  PENDING
+  CLEAN
+  INFECTED
+  FAILED
+}
 model User {
  id String @id @default(uuid()) @db.Uuid
  email String @unique
@@ -195,6 +216,7 @@ model User {
  messageReads MessageRead[]
  reportsFiled Report[] @relation("ReportReporter")
  reportsAgainst Report[] @relation("ReportTarget")
+ securityEvents SecurityEvent[]
 }
 model UserRoleAssignment {
  userId String @db.Uuid
@@ -659,6 +681,9 @@ model MedicalDocument {
  sizeBytes BigInt
  sha256 String?
  encryptionKeyRef String?
+ scanStatus MedicalScanStatus @default(PENDING)
+ scannedAt DateTime?
+ scanReason String?
  createdAt DateTime @default(now())
  deletedAt DateTime?
  owner User @relation("DocumentOwner",fields:[ownerId],references:[id],onDelete:Cascade)
@@ -816,4 +841,22 @@ model AuditLog {
  createdAt DateTime @default(now())
  actor User? @relation("AuditActor",fields:[actorUserId],references:[id])
 @@index([actorUserId,createdAt])
+}
+
+
+model SecurityEvent {
+ id String @id @default(uuid()) @db.Uuid
+ userId String? @db.Uuid
+ type SecurityEventType
+ severity SecurityEventSeverity @default(WARNING)
+ ipAddress String?
+ userAgent String?
+ requestId String?
+ metadata Json?
+ createdAt DateTime @default(now())
+ user User? @relation(fields:[userId],references:[id],onDelete:SetNull)
+ @@index([userId,createdAt])
+ @@index([type,createdAt])
+ @@index([severity,createdAt])
+ @@index([ipAddress,createdAt])
 }
