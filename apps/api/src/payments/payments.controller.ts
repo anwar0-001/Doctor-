@@ -25,6 +25,10 @@ export class PaymentsController {
  @ApiBearerAuth() @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.FINANCE)
  createFee(@Req() req:Request&{user:{id:string}},@Body() dto:CreatePlatformFeeConfigDto){return this.payments.createFeeConfig(req.user.id,dto);}
 
+ @Post('admin/reconcile-refund/:transactionId')
+ @ApiBearerAuth() @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.FINANCE)
+ reconcileRefund(@Req() req:Request&{user:{id:string}},@Param('transactionId') id:string){return this.payments.reconcileRefund(req.user.id,id);}
+
  @Post('admin/reconcile/:transactionId')
  @ApiBearerAuth() @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.FINANCE)
  reconcile(@Req() req:Request&{user:{id:string}},@Param('transactionId') id:string){return this.payments.reconcileTransaction(req.user.id,id);}
