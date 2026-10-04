@@ -1,4 +1,5 @@
 import { IsISO8601, IsIn, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { PaymentStatus } from '@prisma/client';
 export class CreatePaymentDto { @IsString() appointmentId!: string; @IsOptional() @IsString() returnUrl?: string; }
 export class RefundPaymentDto { @IsString() reason!: string; }
 export class CreatePlatformFeeConfigDto {
@@ -10,7 +11,7 @@ export class CreatePlatformFeeConfigDto {
   @IsOptional() @IsString() note?: string;
 }
 export class ListTransactionsDto {
-  @IsOptional() @IsIn(['PENDING','SUCCEEDED','FAILED','REFUNDED','PARTIALLY_REFUNDED','DISPUTED']) status?: string;
+  @IsOptional() @IsIn(['PENDING','SUCCEEDED','FAILED','REFUNDED','PARTIALLY_REFUNDED','DISPUTED']) status?: PaymentStatus;
   @IsOptional() @IsString() provider?: string;
   @IsOptional() @IsString() currency?: string;
   @IsOptional() @IsISO8601() from?: string;
