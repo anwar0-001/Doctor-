@@ -81,9 +81,15 @@ export class AuthService {
     const email = dto.email.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email }, include: { roles: true } });
     if (!user || user.status !== 'ACTIVE') throw new UnauthorizedException('Invalid credentials');
+    if (user.lockedUntil && user.lockedUntil > new Date()) throw new UnauthorizedException('Invalid credentials');
 
     const valid = await argon2.verify(user.passwordHash, dto.password);
-    if (!valid) throw new UnauthorizedException('Invalid credentials');
+    if (!valid) {
+      const next = user.failedLoginCount + 1;
+      await this.prisma.user.update({ where: { id: user.id }, data: { failedLoginCount: next >= 5 ? 0 : next, lockedUntil: next >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null } });
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    await this.prisma.user.update({ where: { id: user.id }, data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date() } });
 
     if (user.mfaEnabled) {
       if (!dto.mfaCode || !user.mfaSecretEncrypted) throw new UnauthorizedException('MFA code required');
