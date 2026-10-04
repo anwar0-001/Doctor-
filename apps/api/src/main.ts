@@ -18,7 +18,10 @@ async function bootstrap() {
   }));
   app.use((req: any, res: any, next: () => void) => {
     const incoming = req.headers['x-request-id'];
-    const requestId = typeof incoming === 'string' && incoming.length <= 128 ? incoming : randomUUID();
+    const requestId =
+      typeof incoming === 'string' && /^[A-Za-z0-9._:-]{1,128}$/.test(incoming)
+        ? incoming
+        : randomUUID();
     req.requestId = requestId;
     res.setHeader('x-request-id', requestId);
     next();
