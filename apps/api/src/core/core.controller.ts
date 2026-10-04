@@ -2,7 +2,9 @@ import { Body,Controller,Get,Param,Post,Query,Req,UseGuards } from '@nestjs/comm
 import { ApiBearerAuth,ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AdminGuard } from './admin.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 import { CoreService } from './core.service';
 import { CreatePlanDto,DisputeDto,NotificationDto,ReviewDto,SubscribeDto,VideoDto } from './core.dto';
 @ApiTags('core') @Controller('core') export class CoreController{
@@ -19,8 +21,8 @@ import { CreatePlanDto,DisputeDto,NotificationDto,ReviewDto,SubscribeDto,VideoDt
  @Post('notifications/:id/read') @UseGuards(JwtAuthGuard) @ApiBearerAuth() read(@Req() r:any,@Param('id') id:string){return this.s.markNotificationRead(r.user.id,id);}
  @Post('video/session') @UseGuards(JwtAuthGuard) @ApiBearerAuth() video(@Req() r:any,@Body() d:VideoDto){return this.s.video(r.user.id,d);}
  @Get('ads') ads(){return this.s.ads();}
- @UseGuards(JwtAuthGuard,AdminGuard) @ApiBearerAuth() @Post('admin/plans') adminPlan(@Body() d:CreatePlanDto){return this.s.createPlan(d);}
- @UseGuards(JwtAuthGuard,AdminGuard) @ApiBearerAuth() @Get('admin/disputes') adminDisputes(){return this.s.disputes();}
- @UseGuards(JwtAuthGuard,AdminGuard) @ApiBearerAuth() @Post('admin/disputes/:id/resolve') resolve(@Param('id') id:string,@Body('resolution') resolution:string){return this.s.resolveDispute(id,resolution);}
- @UseGuards(JwtAuthGuard,AdminGuard) @ApiBearerAuth() @Post('admin/notify/:userId') notify(@Param('userId') id:string,@Body() d:NotificationDto){return this.s.notify(id,d);}
+ @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.FINANCE) @ApiBearerAuth() @Post('admin/plans') adminPlan(@Body() d:CreatePlanDto){return this.s.createPlan(d);}
+ @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.MODERATOR,UserRole.SUPPORT,UserRole.FINANCE) @ApiBearerAuth() @Get('admin/disputes') adminDisputes(){return this.s.disputes();}
+ @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.MODERATOR,UserRole.SUPPORT,UserRole.FINANCE) @ApiBearerAuth() @Post('admin/disputes/:id/resolve') resolve(@Param('id') id:string,@Body('resolution') resolution:string,@Req() r:any){return this.s.resolveDispute(r.user.id,id,resolution);}
+ @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.SUPPORT) @ApiBearerAuth() @Post('admin/notify/:userId') notify(@Param('userId') id:string,@Body() d:NotificationDto){return this.s.notify(id,d);}
 }
