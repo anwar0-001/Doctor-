@@ -19,7 +19,7 @@ Implemented in the production-foundation branch:
 - Doctor verification workflow and verified-only discovery/booking/payment gates.
 - Time-zone aware availability, booking idempotency and double-booking protection.
 - Stripe Connect payment intents, signed webhooks, webhook idempotency, cumulative refund reconciliation, destination-transfer reconciliation and immutable fee snapshots.
-- Doctor earnings/payout ledgers with safe doctor-only financial views and admin reconciliation endpoints.
+- Doctor earnings/payout ledgers with safe doctor-only financial views, destination-transfer reconciliation, connected-account bank-payout webhooks and admin reconciliation endpoints.
 - Monthly doctor fee ledger using the configured monthly percentage and unique doctor/period/currency periods.
 - RBAC, ownership checks, audit logging, encrypted messaging and private medical-document access controls.
 - IDOR-focused tests across reviews, disputes, notifications, video sessions, messaging and authentication.
