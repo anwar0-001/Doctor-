@@ -89,14 +89,18 @@ export class AuthService {
       await this.prisma.user.update({ where: { id: user.id }, data: { failedLoginCount: next >= 5 ? 0 : next, lockedUntil: next >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null } });
       throw new UnauthorizedException('Invalid credentials');
     }
-    await this.prisma.user.update({ where: { id: user.id }, data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date() } });
-
     if (user.mfaEnabled) {
       if (!dto.mfaCode || !user.mfaSecretEncrypted) throw new UnauthorizedException('MFA code required');
       const secret = this.config.getOrThrow<string>('MFA_ENCRYPTION_KEY');
       const decrypted = this.decryptSecret(user.mfaSecretEncrypted, secret);
       if (!authenticator.verify({ token: dto.mfaCode, secret: decrypted })) throw new UnauthorizedException('Invalid MFA code');
     }
+
+    // Reset the password-failure state only after every authentication factor succeeds.
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date() },
+    });
 
     return { userId: user.id, ...(await this.issueTokens(user.id, user.roles.map((r) => r.role), userAgent, ip)) };
   }
