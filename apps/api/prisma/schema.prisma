@@ -539,6 +539,8 @@ model PlatformFeeConfig {
  active Boolean @default(true)
  effectiveFrom DateTime @default(now())
  createdAt DateTime @default(now())
+ @@unique([effectiveFrom])
+ @@index([active,effectiveFrom])
 }
 model Transaction {
  id String @id @default(uuid()) @db.Uuid
