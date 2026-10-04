@@ -92,7 +92,10 @@ export class PaymentsService {
   const amount=Number(refund.amount??0)/100;
   const newRefundTotal=Number((alreadyRefunded+amount).toFixed(2));
   const status=newRefundTotal>=charged?PaymentStatus.REFUNDED:PaymentStatus.PARTIALLY_REFUNDED;
-  await this.prisma.transaction.update({where:{id:tx.id},data:{status,refundAmount:newRefundTotal}});
+  await this.prisma.$transaction([
+    this.prisma.transaction.update({where:{id:tx.id},data:{status,refundAmount:newRefundTotal}}),
+    this.prisma.auditLog.create({data:{actorUserId:userId,action:'PAYMENT_REFUNDED',resourceType:'Transaction',resourceId:tx.id,metadata:{appointmentId,refundId:refund.id,amount,refundTotal:newRefundTotal,reason:reason.slice(0,500)}}}),
+  ]);
   return {refundId:refund.id,amount,refundTotal:newRefundTotal,remaining:Number(Math.max(0,charged-newRefundTotal).toFixed(2))};
  }
 }
