@@ -6,7 +6,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { CoreService } from './core.service';
-import { CreatePlanDto,DisputeDto,NotificationDto,ReviewDto,SubscribeDto,VideoDto } from './core.dto';
+import { CreatePlanDto,DisputeDto,NotificationDto,ReviewDto,SubscribeDto,VideoDto,ResolveDisputeDto } from './core.dto';
 @ApiTags('core') @Controller('core') export class CoreController{
  constructor(private readonly s:CoreService){}
  @Get('plans') plans(){return this.s.plans();}
@@ -23,6 +23,6 @@ import { CreatePlanDto,DisputeDto,NotificationDto,ReviewDto,SubscribeDto,VideoDt
  @Get('ads') ads(){return this.s.ads();}
  @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.FINANCE) @ApiBearerAuth() @Post('admin/plans') adminPlan(@Body() d:CreatePlanDto){return this.s.createPlan(d);}
  @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.MODERATOR,UserRole.SUPPORT,UserRole.FINANCE) @ApiBearerAuth() @Get('admin/disputes') adminDisputes(){return this.s.disputes();}
- @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.MODERATOR,UserRole.SUPPORT,UserRole.FINANCE) @ApiBearerAuth() @Post('admin/disputes/:id/resolve') resolve(@Param('id') id:string,@Body('resolution') resolution:string,@Req() r:any){return this.s.resolveDispute(r.user.id,id,resolution);}
+ @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.MODERATOR,UserRole.SUPPORT,UserRole.FINANCE) @ApiBearerAuth() @Post('admin/disputes/:id/resolve') resolve(@Param('id') id:string,@Body() d:ResolveDisputeDto,@Req() r:any){return this.s.resolveDispute(r.user.id,id,d.action,d.resolution,d.amount);}
  @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.SUPPORT) @ApiBearerAuth() @Post('admin/notify/:userId') notify(@Param('userId') id:string,@Body() d:NotificationDto){return this.s.notify(id,d);}
 }
