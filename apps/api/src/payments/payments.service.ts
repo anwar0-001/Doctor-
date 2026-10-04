@@ -29,7 +29,7 @@ export class PaymentsService {
   const doctor=await this.prisma.doctorProfile.findUnique({where:{userId:a.doctorId}}); if(!doctor||doctor.status!==DoctorStatus.VERIFIED||!doctor.stripeAccountId||!doctor.stripeOnboardingComplete) throw new ConflictException('Doctor payout account is not ready');
   const existing=await this.prisma.transaction.findFirst({where:{appointmentId,status:PaymentStatus.PENDING},orderBy:{createdAt:'desc'}});
   if(existing?.providerClientSecret&&existing.providerTransactionId) return {transactionId:existing.id,paymentIntentId:existing.providerTransactionId,clientSecret:existing.providerClientSecret};
-  const fee=await this.prisma.platformFeeConfig.findFirst({where:{active:true},orderBy:{effectiveFrom:'desc'}});
+  const fee=await this.prisma.platformFeeConfig.findFirst({where:{active:true,effectiveFrom:{lte:new Date()}},orderBy:{effectiveFrom:'desc'}});
   if(!fee) throw new ConflictException('No active platform fee configuration');
   const amount=Number(a.service.price),patientFee=Number((amount*Number(fee.patientPercent)/100).toFixed(2)),doctorFee=Number((amount*Number(fee.doctorPercent)/100).toFixed(2)),total=amount+patientFee,platformRevenue=patientFee+doctorFee,doctorNet=amount-doctorFee;
   const minor=Math.round(total*100),applicationFee=Math.round(platformRevenue*100);
