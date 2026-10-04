@@ -1,12 +1,13 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ConversationStatus, MessageType, ReportStatus } from '@prisma/client';
+import { ConversationStatus, MedicalScanStatus, MessageType, ReportStatus } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { MessageCryptoService } from './crypto.service';
 import { DocumentStorageService } from './storage.service';
 import { CreateConversationDto, InitDocumentDto, ReportDto, SendMessageDto } from './dto/messaging.dto';
 @Injectable()
 export class MessagingService {
- constructor(private readonly prisma:PrismaService,private readonly crypto:MessageCryptoService,private readonly storage:DocumentStorageService){}
+ constructor(private readonly prisma:PrismaService,private readonly crypto:MessageCryptoService,private readonly storage:DocumentStorageService,private readonly config:ConfigService){}
  private async conversationForUser(id:string,userId:string){const c=await this.prisma.conversation.findUnique({where:{id},include:{patient:true,doctor:true}});if(!c)throw new NotFoundException('Conversation not found');if(c.patientId!==userId&&c.doctorId!==userId)throw new ForbiddenException('Conversation access denied');return c;}
  async createConversation(userId:string,dto:CreateConversationDto){
   const doctor=await this.prisma.doctorProfile.findUnique({where:{userId:dto.doctorId}});if(!doctor||doctor.status!=='VERIFIED')throw new BadRequestException('Doctor is not available');
@@ -29,7 +30,12 @@ export class MessagingService {
   if(dto.doctorId){const doctor=await this.prisma.doctorProfile.findUnique({where:{userId:dto.doctorId}});if(!doctor||doctor.status!=='VERIFIED')throw new BadRequestException('Invalid doctor');const linked=await this.prisma.appointment.findFirst({where:{patientId:userId,doctorId:dto.doctorId,status:{in:['CONFIRMED','IN_PROGRESS','COMPLETED']}}});if(!linked)throw new ForbiddenException('A doctor-patient relationship is required before sharing medical documents');}
   const key=this.storage.key(userId,dto.originalName);const doc=await this.prisma.medicalDocument.create({data:{ownerId:userId,uploaderId:userId,doctorId:dto.doctorId,objectKey:key,originalName:dto.originalName.replace(/[\\/]/g,'_'),mimeType:dto.mimeType,sizeBytes:BigInt(dto.sizeBytes)}});const uploadUrl=await this.storage.createUpload(key,dto.mimeType);return {documentId:doc.id,objectKey:key,uploadUrl,expiresIn:300};
  }
- async document(userId:string,id:string){const d=await this.prisma.medicalDocument.findUnique({where:{id}});if(!d||d.deletedAt)throw new NotFoundException('Document not found');if(d.ownerId!==userId&&d.uploaderId!==userId&&d.doctorId!==userId)throw new ForbiddenException('Document access denied');if(!d.objectKey.startsWith('medical/'))throw new ForbiddenException('Invalid medical object');const url=await this.storage.createDownload(d.objectKey);await this.prisma.auditLog.create({data:{actorUserId:userId,action:'MEDICAL_DOCUMENT_ACCESSED',resourceType:'MedicalDocument',resourceId:id}});return {...d,sizeBytes:d.sizeBytes.toString(),downloadUrl:url,expiresIn:300};}
+ async document(userId:string,id:string){const d=await this.prisma.medicalDocument.findUnique({where:{id}});if(!d||d.deletedAt)throw new NotFoundException('Document not found');if(d.ownerId!==userId&&d.uploaderId!==userId&&d.doctorId!==userId)throw new ForbiddenException('Document access denied');if(!d.objectKey.startsWith('medical/'))throw new ForbiddenException('Invalid medical object');const requireScan=this.config.get('REQUIRE_MEDICAL_SCAN',this.config.get('NODE_ENV')==='production');if(requireScan&&d.scanStatus!==MedicalScanStatus.CLEAN)throw new ForbiddenException('Medical document is not available until malware scanning is complete');const url=await this.storage.createDownload(d.objectKey);await this.prisma.auditLog.create({data:{actorUserId:userId,action:'MEDICAL_DOCUMENT_ACCESSED',resourceType:'MedicalDocument',resourceId:id}});return {...d,sizeBytes:d.sizeBytes.toString(),downloadUrl:url,expiresIn:300};}
+ async setScanResult(documentId:string,status:MedicalScanStatus,reason?:string){
+  const doc=await this.prisma.medicalDocument.findUnique({where:{id:documentId},select:{id:true}});
+  if(!doc)throw new NotFoundException('Document not found');
+  return this.prisma.medicalDocument.update({where:{id:documentId},data:{scanStatus:status,scannedAt:new Date(),scanReason:reason?.slice(0,1000)}});
+ }
  async report(userId:string,conversationId:string,dto:ReportDto){const c=await this.conversationForUser(conversationId,userId);if(dto.messageId){const m=await this.prisma.message.findUnique({where:{id:dto.messageId}});if(!m||m.conversationId!==conversationId)throw new BadRequestException('Invalid message');}return this.prisma.report.create({data:{reporterId:userId,targetUserId:c.patientId===userId?c.doctorId:c.patientId,conversationId,messageId:dto.messageId,reason:dto.reason,details:dto.details,status:ReportStatus.OPEN}});}
  async block(userId:string,id:string){await this.conversationForUser(id,userId);return this.prisma.conversation.update({where:{id},data:{status:ConversationStatus.BLOCKED}});}
 }
