@@ -1,0 +1,4 @@
+import { IsOptional,IsString,IsUUID,MaxLength } from 'class-validator';
+export class HealthProfileDto { @IsOptional() @IsString() bloodType?:string; @IsOptional() allergies?:unknown; @IsOptional() chronicConditions?:unknown; @IsOptional() medications?:unknown; @IsOptional() emergencyContact?:unknown; @IsOptional() @IsString() @MaxLength(5000) notes?:string; }
+export class FamilyDto { @IsString() firstName!:string; @IsOptional() @IsString() lastName?:string; @IsString() relationship!:string; @IsOptional() dateOfBirth?:string; @IsOptional() @IsString() notes?:string; }
+export class PrescriptionDto { @IsUUID() appointmentId!:string; @IsString() medication!:string; @IsString() dosage!:string; @IsOptional() @IsString() instructions?:string; @IsOptional() expiresAt?:string; }

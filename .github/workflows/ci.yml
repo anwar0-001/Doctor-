@@ -1,0 +1,27 @@
+name: CI
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://doctor:doctor@localhost:5432/doctor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.15.0 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm --filter @doctor/api prisma:generate
+      - run: pnpm --filter @doctor/api typecheck
+      - run: pnpm --filter @doctor/api test:ci
+      - run: pnpm --filter @doctor/api prisma:validate
+      - run: pnpm --filter @doctor/web typecheck
+      - run: pnpm build

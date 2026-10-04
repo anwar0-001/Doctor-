@@ -1,0 +1,5 @@
+import { IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+export class CreateConversationDto { @IsUUID() doctorId!: string; @IsOptional() @IsUUID() appointmentId?: string; }
+export class SendMessageDto { @IsString() @MinLength(1) @MaxLength(10000) text!: string; @IsOptional() @IsIn(['TEXT','IMAGE','DOCUMENT','VOICE_SYSTEM']) type?: 'TEXT'|'IMAGE'|'DOCUMENT'|'VOICE_SYSTEM'; @IsOptional() @IsUUID() appointmentId?: string; @IsOptional() @IsUUID() replyToId?: string; }
+export class InitDocumentDto { @IsString() @MinLength(1) @MaxLength(255) originalName!: string; @IsString() @MaxLength(150) mimeType!: string; sizeBytes!: number; @IsOptional() @IsUUID() doctorId?: string; }
+export class ReportDto { @IsString() @MinLength(3) @MaxLength(100) reason!: string; @IsOptional() @IsString() @MaxLength(2000) details?: string; @IsOptional() @IsUUID() messageId?: string; }

@@ -1,0 +1,5 @@
+export const ACCESS_TOKEN_TTL_SECONDS = 900;
+export const REFRESH_TOKEN_TTL_DAYS = 30;
+export const MAX_ACTIVE_SESSIONS = 10;
+export const LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+export const MAX_FAILED_LOGINS = 5;
