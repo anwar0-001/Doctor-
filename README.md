@@ -12,3 +12,16 @@ Global digital health platform foundation for patients, doctors, admins, appoint
 - RBAC, ownership checks, audit logging and configurable country rules
 
 See docs/architecture.md and docs/security.md.
+
+## Current implementation status
+Implemented in the production-foundation branch:
+- Auth with Argon2id, MFA/TOTP, short-lived access tokens, refresh rotation/replay protection, session caps and login lockout.
+- Doctor verification workflow and verified-only discovery/booking/payment gates.
+- Time-zone aware availability, booking idempotency and double-booking protection.
+- Stripe Connect payment intents, signed webhooks, webhook idempotency and fee snapshots.
+- Monthly doctor fee ledger using the configured monthly percentage and unique doctor/period/currency periods.
+- RBAC, ownership checks, audit logging, encrypted messaging and private medical-document access controls.
+- IDOR-focused tests across reviews, disputes, notifications, video sessions, messaging and authentication.
+
+### Remaining external/production launch dependencies
+The repository intentionally does not fake third-party infrastructure. Before a real launch, production credentials/configuration and integration work are still required for the selected video provider, email/SMS/push delivery, malware scanning, WAF/bot protection, managed secrets, backups/disaster recovery, observability, mobile apps, legal/privacy review, and a full staging/E2E/security/payment certification run.
