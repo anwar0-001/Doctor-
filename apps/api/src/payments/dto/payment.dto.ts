@@ -19,3 +19,17 @@ export class ListTransactionsDto {
   @IsOptional() @IsInt() @Min(1) @Max(100) page?: number;
   @IsOptional() @IsInt() @Min(1) @Max(100) pageSize?: number;
 }
+
+export class DoctorEarningsQueryDto {
+  @IsOptional() @IsISO8601() from?: string;
+  @IsOptional() @IsISO8601() to?: string;
+  @IsOptional() @IsString() currency?: string;
+  @IsOptional() @IsInt() @Min(1) @Max(100) page?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(100) pageSize?: number;
+}
+export class DoctorPayoutsQueryDto extends DoctorEarningsQueryDto {
+  @IsOptional() @IsString() status?: string;
+}
+export class AdminPayoutsQueryDto extends DoctorPayoutsQueryDto {
+  @IsOptional() @IsString() doctorId?: string;
+}
