@@ -6,7 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export class MonthlyFeeService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async calculate(doctorId: string, periodStart: Date, periodEnd: Date, currency: string) {
+  async calculate(doctorId: string, periodStart: Date, periodEnd: Date, currency: string, actorUserId?: string) {
     if (!(periodStart < periodEnd)) throw new BadRequestException('Invalid fee period');
     const doctor = await this.prisma.doctorProfile.findUnique({ where: { userId: doctorId } });
     if (!doctor) throw new BadRequestException('Doctor not found');
@@ -30,10 +30,12 @@ export class MonthlyFeeService {
     if (existing && existing.status !== 'OPEN') {
       throw new ConflictException('Monthly fee is already finalized');
     }
-    return this.prisma.doctorMonthlyFee.upsert({
+    const result = await this.prisma.doctorMonthlyFee.upsert({
       where: { doctorId_periodStart_periodEnd_currency: { doctorId, periodStart, periodEnd, currency: normalizedCurrency } },
       create: { doctorId, periodStart, periodEnd, currency: normalizedCurrency, grossEarnings: gross, feePercent: percent, feeAmount: amount },
       update: { grossEarnings: gross, feePercent: percent, feeAmount: amount },
     });
+    if (actorUserId) await this.prisma.auditLog.create({data:{actorUserId,action:'MONTHLY_DOCTOR_FEE_CALCULATED',resourceType:'DoctorMonthlyFee',resourceId:result.id,metadata:{doctorId,periodStart:periodStart.toISOString(),periodEnd:periodEnd.toISOString(),currency:normalizedCurrency,grossEarnings:gross,feePercent:percent,feeAmount:amount}}});
+    return result;
   }
 }
