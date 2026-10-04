@@ -115,4 +115,34 @@ export class PaymentsService {
   return config;
  }
 
+ async listTransactions(filters:{status?:PaymentStatus;provider?:string;currency?:string;from?:string;to?:string;page?:number;pageSize?:number}){
+  const page=Math.max(1,filters.page??1), pageSize=Math.min(100,Math.max(1,filters.pageSize??25));
+  const where:any={};
+  if(filters.status) where.status=filters.status;
+  if(filters.provider) where.provider=filters.provider;
+  if(filters.currency) where.currency=filters.currency.toLowerCase();
+  if(filters.from||filters.to) where.createdAt={...(filters.from?{gte:new Date(filters.from)}:{}),...(filters.to?{lt:new Date(filters.to)}:{})};
+  const [items,total]=await this.prisma.$transaction([
+   this.prisma.transaction.findMany({where,orderBy:{createdAt:'desc'},skip:(page-1)*pageSize,take:pageSize,select:{id:true,appointmentId:true,userId:true,provider:true,providerTransactionId:true,providerFeeId:true,status:true,currency:true,consultationAmount:true,patientPlatformFee:true,doctorPlatformFee:true,taxAmount:true,processingFee:true,refundAmount:true,doctorNet:true,platformRevenue:true,feeSnapshot:true,createdAt:true,updatedAt:true}}),
+   this.prisma.transaction.count({where}),
+  ]);
+  return {items,total,page,pageSize,pageCount:Math.ceil(total/pageSize)};
+ }
+ async reconcileTransaction(actorUserId:string,transactionId:string){
+  const tx=await this.prisma.transaction.findUnique({where:{id:transactionId}});
+  if(!tx) throw new NotFoundException('Transaction not found');
+  if(tx.provider!=='stripe'||!tx.providerTransactionId) throw new ConflictException('Transaction cannot be reconciled');
+  const remote=await this.stripe('payment_intents/'+tx.providerTransactionId,'GET');
+  const remoteStatus=remote.status??'unknown';
+  const next=remoteStatus==='succeeded'?PaymentStatus.SUCCEEDED:remoteStatus==='payment_failed'||remoteStatus==='canceled'?PaymentStatus.FAILED:tx.status;
+  if(next!==tx.status){
+   await this.prisma.$transaction([
+    this.prisma.transaction.update({where:{id:tx.id},data:{status:next}}),
+    ...(tx.appointmentId?[this.prisma.appointment.updateMany({where:{id:tx.appointmentId,status:AppointmentStatus.PENDING},data:next===PaymentStatus.SUCCEEDED?{status:AppointmentStatus.CONFIRMED}:{status:AppointmentStatus.CANCELLED,cancellationReason:'Payment reconciliation failed',cancelledAt:new Date()}})]:[]),
+    this.prisma.auditLog.create({data:{actorUserId,action:'PAYMENT_RECONCILED',resourceType:'Transaction',resourceId:tx.id,metadata:{previousStatus:tx.status,newStatus:next,remoteStatus}}}),
+   ]);
+  } else await this.prisma.auditLog.create({data:{actorUserId,action:'PAYMENT_RECONCILIATION_CHECKED',resourceType:'Transaction',resourceId:tx.id,metadata:{status:tx.status,remoteStatus}}});
+  return {transactionId:tx.id,localStatus:next,remoteStatus,changed:next!==tx.status};
+ }
+
 }
