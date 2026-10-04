@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Query, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -16,7 +16,7 @@ export class PaymentsController {
  @Post('webhook') webhook(@Req() req:Request&{rawBody?:Buffer},@Headers('stripe-signature') signature:string){if(!req.rawBody) throw new Error('Raw request body unavailable');return this.payments.webhook(req.rawBody,signature);}
  @Get('admin/transactions')
  @ApiBearerAuth() @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.FINANCE)
- listTransactions(@Body() _unused:never,@Req() req:Request&{query:ListTransactionsDto}){return this.payments.listTransactions(req.query);}
+ listTransactions(@Query() query:ListTransactionsDto){return this.payments.listTransactions(query);}
 
  @Get('admin/fees')
  @ApiBearerAuth() @UseGuards(JwtAuthGuard,RolesGuard) @Roles(UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.FINANCE)
