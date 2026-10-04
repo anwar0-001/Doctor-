@@ -1,5 +1,5 @@
 import { BadRequestException,ForbiddenException,Injectable,NotFoundException } from '@nestjs/common';
-import { Prisma,AdStatus,DisputeStatus,HealthArticleStatus,NotificationChannel,NotificationStatus,ReviewStatus,SubscriptionStatus,SubscriptionTier,VideoProvider,VideoSessionStatus } from '@prisma/client';
+import { Prisma,AdStatus,DisputeStatus,HealthArticleStatus,NotificationChannel,PaymentStatus,NotificationStatus,ReviewStatus,SubscriptionStatus,SubscriptionTier,VideoProvider,VideoSessionStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { CreatePlanDto,DisputeDto,NotificationDto,ReviewDto,SubscribeDto,VideoDto } from './core.dto';
