@@ -61,7 +61,38 @@ export class PaymentsService {
     if(paymentIntentId){const tx=await this.prisma.transaction.findFirst({where:{provider:'stripe',providerTransactionId:paymentIntentId}});if(tx){const charged=Number(tx.consultationAmount)+Number(tx.patientPlatformFee);const refunded=Math.min(charged,Number(obj?.amount_refunded??0)/100);const status=refunded>=charged?PaymentStatus.REFUNDED:refunded>0?PaymentStatus.PARTIALLY_REFUNDED:tx.status;await this.prisma.transaction.update({where:{id:tx.id},data:{refundAmount:refunded,status}});}}
    } else if(event.type==='refund.updated'){
     const paymentIntentId=obj?.payment_intent as string|undefined;
-    if(paymentIntentId&&obj?.status==='succeeded'){const tx=await this.prisma.transaction.findFirst({where:{provider:'stripe',providerTransactionId:paymentIntentId}});if(tx){const charged=Number(tx.consultationAmount)+Number(tx.patientPlatformFee);const amount=Number(obj?.amount??0)/100;const total=Math.min(charged,Number(tx.refundAmount)+amount);const status=total>=charged?PaymentStatus.REFUNDED:PaymentStatus.PARTIALLY_REFUNDED;await this.prisma.transaction.update({where:{id:tx.id},data:{refundAmount:total,status}});}}
+    if(paymentIntentId&&obj?.status==='succeeded'){
+      const tx=await this.prisma.transaction.findFirst({where:{provider:'stripe',providerTransactionId:paymentIntentId}});
+      if(tx){
+        const remote:any=await this.stripe('payment_intents/'+paymentIntentId+'?expand[]=latest_charge','GET');
+        const charged=Number(tx.consultationAmount)+Number(tx.patientPlatformFee);
+        const total=Math.min(charged,Math.max(0,Number(remote?.latest_charge?.amount_refunded??0)/100));
+        const status=total>=charged?PaymentStatus.REFUNDED:total>0?PaymentStatus.PARTIALLY_REFUNDED:tx.status;
+        await this.prisma.transaction.update({where:{id:tx.id},data:{refundAmount:total,status}});
+      }
+    }
+   } else if(event.type==='transfer.created'||event.type==='transfer.updated'||event.type==='transfer.reversed'){
+     const transferId=obj?.id as string|undefined;
+     const destination=obj?.destination as string|undefined;
+     if(transferId&&destination){
+       const doctor=await this.prisma.doctorProfile.findUnique({where:{stripeAccountId:destination},select:{userId:true}});
+       if(doctor){
+         const sourceTransaction=obj?.source_transaction as string|undefined;
+         let tx=sourceTransaction?await this.prisma.transaction.findFirst({where:{provider:'stripe',providerTransactionId:sourceTransaction}}):null;
+         if(!tx){
+           const intentId=obj?.metadata?.paymentIntentId as string|undefined;
+           if(intentId) tx=await this.prisma.transaction.findFirst({where:{provider:'stripe',providerTransactionId:intentId}});
+         }
+         if(tx){
+           const status=event.type==='transfer.reversed'?'REVERSED':'TRANSFERRED';
+           await this.prisma.doctorPayout.upsert({
+             where:{transactionId:tx.id},
+             create:{doctorId:doctor.userId,transactionId:tx.id,provider:'stripe',providerTransferId:transferId,amount:Number(obj?.amount??0)/100,currency:String(obj?.currency??tx.currency).toLowerCase(),status},
+             update:{doctorId:doctor.userId,providerTransferId:transferId,amount:Number(obj?.amount??0)/100,currency:String(obj?.currency??tx.currency).toLowerCase(),status}
+           });
+         }
+       }
+     }
    } else if(event.type==='account.updated'){
     const accountId=obj?.id as string|undefined;
     if(accountId) await this.prisma.doctorProfile.updateMany({where:{stripeAccountId:accountId},data:{stripeOnboardingComplete:Boolean(obj?.details_submitted&&obj?.charges_enabled&&obj?.payouts_enabled)}});
