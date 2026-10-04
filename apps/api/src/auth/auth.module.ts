@@ -5,10 +5,12 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
+import { SecurityModule } from '../security/security.module';
 
 @Module({
   imports: [
     ConfigModule,
+    SecurityModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
