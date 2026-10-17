@@ -368,6 +368,7 @@ availabilities Availability[]
 availabilityExceptions AvailabilityException[]
 waitlist Waitlist[]
 payouts DoctorPayout[]
+ bankPayouts DoctorBankPayout[]
  monthlyFees DoctorMonthlyFee[]
  reviewsReceived Review[]
 @@index([status,specialtyId,countryId,cityId])
