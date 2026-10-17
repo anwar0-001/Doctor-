@@ -54,7 +54,7 @@ describe('CoreService security invariants', () => {
   it('does not mutate the transaction status when an admin closes a dispute', async()=>{
     prisma.dispute.findUnique.mockResolvedValue({id:'d',status:'OPEN'});
     prisma.dispute.update.mockResolvedValue({id:'d',status:'RESOLVED'});
-    await expect(new CoreService(prisma, {} as any).resolveDispute('d','resolved after review')).resolves.toEqual({id:'d',status:'RESOLVED'});
+    await expect(new CoreService(prisma, {} as any).resolveDispute('admin','d','REJECT','resolved after review')).resolves.toEqual({id:'d',status:'RESOLVED'});
     expect(prisma.transaction.update).not.toHaveBeenCalled();
   });
   it('blocks notification IDOR on read', async()=>{
