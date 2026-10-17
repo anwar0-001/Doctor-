@@ -51,11 +51,13 @@ describe('CoreService security invariants', () => {
       .rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('does not mutate the transaction status when an admin closes a dispute', async()=>{
-    prisma.dispute.findUnique.mockResolvedValue({id:'d',status:'OPEN'});
-    prisma.dispute.update.mockResolvedValue({id:'d',status:'RESOLVED'});
-    await expect(new CoreService(prisma, {} as any).resolveDispute('admin','d','REJECT','resolved after review')).resolves.toEqual({id:'d',status:'RESOLVED'});
-    expect(prisma.transaction.update).not.toHaveBeenCalled();
+  it('restores the settled transaction state when an admin rejects a dispute', async()=>{
+    prisma.dispute.findUnique.mockResolvedValue({id:'d',transactionId:'t',status:'OPEN'});
+    prisma.transaction.findUnique.mockResolvedValue({id:'t',consultationAmount:100,patientPlatformFee:0,refundAmount:0});
+    prisma.transaction.update.mockResolvedValue({id:'t',status:'SUCCEEDED'});
+    prisma.dispute.update.mockResolvedValue({id:'d',status:'REJECTED'});
+    await expect(new CoreService(prisma, {} as any).resolveDispute('admin','d','REJECT','resolved after review')).resolves.toEqual({disputeId:'d',decision:'REJECT',transactionStatus:'SUCCEEDED'});
+    expect(prisma.transaction.update).toHaveBeenCalledWith({where:{id:'t'},data:{status:'SUCCEEDED'}});
   });
   it('blocks notification IDOR on read', async()=>{
     prisma.notification.findUnique.mockResolvedValue({id:'n',userId:'owner'});
