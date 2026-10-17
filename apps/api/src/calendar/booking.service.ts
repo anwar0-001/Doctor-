@@ -46,6 +46,9 @@ export class BookingService {
  private async withinAvailability(tx:any,doctorId:string,startsAt:Date,endsAt:Date,before:number,after:number){
   const doctor=await tx.doctorProfile.findUnique({where:{userId:doctorId},select:{timezone:true}});
   const lp=localParts(startsAt,doctor.timezone),ep=localParts(endsAt,doctor.timezone),m=(s:string)=>{const [h,x]=s.split(':').map(Number);return h*60+x};
+  // Availability windows represent one local calendar day. Do not let an appointment
+  // ending after midnight pass merely because its clock time is earlier than the window end.
+  if(lp.date!==ep.date) return false;
   const windows=await tx.availability.findMany({where:{doctorId,dayOfWeek:lp.dayOfWeek,active:true}});
   const valid=windows.some((w:any)=>{const z=w.timezone??doctor.timezone;return z===doctor.timezone&&m(lp.time)-before>=m(w.startLocal)&&m(ep.time)+after<=m(w.endLocal)});
   if(!valid) return false;
