@@ -13,7 +13,7 @@ describe('CoreService security invariants', () => {
     auditLog:{create:jest.fn()},
     notification:{create:jest.fn(),findMany:jest.fn(),findUnique:jest.fn(),update:jest.fn()},
     videoSession:{findUnique:jest.fn(),create:jest.fn()},
-    $transaction:jest.fn(async (fn:any)=>fn(prisma)),
+    $transaction:jest.fn(async (input:any)=>Array.isArray(input)?Promise.all(input):input(prisma)),
   };
 
   beforeEach(()=>jest.clearAllMocks());
