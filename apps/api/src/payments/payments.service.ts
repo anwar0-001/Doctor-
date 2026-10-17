@@ -53,7 +53,7 @@ export class PaymentsService {
   const provider='stripe',eventId=event.id;if(!eventId)throw new BadRequestException('Missing event id');
   const existing=await this.prisma.paymentWebhookEvent.findUnique({where:{provider_eventId:{provider,eventId}}});if(existing?.processedAt)return {received:true,duplicate:true};
   await this.prisma.paymentWebhookEvent.upsert({where:{provider_eventId:{provider,eventId}},create:{provider,eventId,payload:event},update:{payload:event}});
-  const claimed=await this.prisma.paymentWebhookEvent.updateMany({where:{provider_eventId:{provider,eventId},processedAt:null,status:'RECEIVED'},data:{status:'PROCESSING'}});if(claimed.count!==1)return {received:true,duplicate:true};
+  const claimed=await this.prisma.paymentWebhookEvent.updateMany({where:{provider,eventId,processedAt:null,status:'RECEIVED'},data:{status:'PROCESSING'}});if(claimed.count!==1)return {received:true,duplicate:true};
   try{
    const obj=event.data?.object as any;const txId=obj?.metadata?.transactionId as string|undefined;
    if(event.type==='charge.refunded'){
@@ -120,7 +120,7 @@ export class PaymentsService {
  async refund(userId:string,appointmentId:string,reason:string){
   const a=await this.prisma.appointment.findUnique({
     where:{id:appointmentId},
-    include:{transactions:{where:{status:{in:[PaymentStatus.SUCCEEDED,PaymentStatus.PARTIALLY_REFUNDED]},orderBy:{createdAt:'desc'}}}},
+    include:{transactions:{where:{status:{in:[PaymentStatus.SUCCEEDED,PaymentStatus.PARTIALLY_REFUNDED]}},orderBy:{createdAt:'desc'}}},
   });
   if(!a)throw new NotFoundException('Appointment not found');
   if(a.patientId!==userId&&a.doctorId!==userId)throw new UnauthorizedException();
@@ -151,7 +151,7 @@ export class PaymentsService {
  async refundTransaction(actorUserId:string,transactionId:string,amount?:number,reason='Dispute resolution'){
   const tx=await this.prisma.transaction.findUnique({where:{id:transactionId}});
   if(!tx?.providerTransactionId) throw new ConflictException('No refundable payment found');
-  if(![PaymentStatus.SUCCEEDED,PaymentStatus.PARTIALLY_REFUNDED,PaymentStatus.DISPUTED].includes(tx.status)) throw new ConflictException('Transaction is not refundable');
+  if(tx.status!==PaymentStatus.SUCCEEDED&&tx.status!==PaymentStatus.PARTIALLY_REFUNDED&&tx.status!==PaymentStatus.DISPUTED) throw new ConflictException('Transaction is not refundable');
   const charged=Number(tx.consultationAmount)+Number(tx.patientPlatformFee),already=Number(tx.refundAmount);
   const remaining=Math.max(0,Number((charged-already).toFixed(2)));
   const requested=amount==null?remaining:Number(amount);
@@ -203,7 +203,7 @@ export class PaymentsService {
   const charge=remote?.latest_charge; const refunded=Number(charge?.amount_refunded??0)/100;
   const charged=Number(tx.consultationAmount)+Number(tx.patientPlatformFee); const capped=Math.min(charged,Math.max(0,refunded));
   const next=capped>=charged&&charged>0?PaymentStatus.REFUNDED:capped>0?PaymentStatus.PARTIALLY_REFUNDED:tx.status;
-  const changed=Number(tx.refundAmount)!==capped||([PaymentStatus.REFUNDED,PaymentStatus.PARTIALLY_REFUNDED].includes(next)&&tx.status!==next);
+  const changed=Number(tx.refundAmount)!==capped||((next===PaymentStatus.REFUNDED||next===PaymentStatus.PARTIALLY_REFUNDED)&&tx.status!==next);
   if(changed) await this.prisma.$transaction([this.prisma.transaction.update({where:{id:tx.id},data:{refundAmount:capped,status:next}}),this.prisma.auditLog.create({data:{actorUserId,action:'REFUND_RECONCILED',resourceType:'Transaction',resourceId:tx.id,metadata:{previousRefund:String(tx.refundAmount),remoteRefund:String(capped),remoteStatus:remote?.status??'unknown',newStatus:next}}})]);
   else await this.prisma.auditLog.create({data:{actorUserId,action:'REFUND_RECONCILIATION_CHECKED',resourceType:'Transaction',resourceId:tx.id,metadata:{refund:String(capped),status:tx.status}}});
   return {transactionId:tx.id,localRefund:Number(tx.refundAmount),remoteRefund:capped,localStatus:next,changed};
