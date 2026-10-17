@@ -225,4 +225,46 @@ export class PaymentsService {
   return {transactionId:tx.id,localStatus:next,remoteStatus,changed:next!==tx.status};
  }
 
+ async doctorEarnings(doctorId:string,query:{currency?:string;from?:string;to?:string;page?:number;pageSize?:number}){
+  const where:any={doctorId,status:'TRANSFERRED'};
+  if(query.currency)where.currency=query.currency.toLowerCase();
+  if(query.from||query.to)where.createdAt={...(query.from?{gte:new Date(query.from)}:{}),...(query.to?{lt:new Date(query.to)}:{})};
+  const [items,total]=await this.prisma.$transaction([this.prisma.doctorPayout.findMany({where,orderBy:{createdAt:'desc'},skip:((query.page??1)-1)*(query.pageSize??25),take:query.pageSize??25}),this.prisma.doctorPayout.count({where})]);
+  return {items,total,page:query.page??1,pageSize:query.pageSize??25};
+ }
+ async doctorPayouts(doctorId:string,query:{status?:string;currency?:string;page?:number;pageSize?:number}){return this.listPayouts({doctorId,...query});}
+ async doctorBankPayouts(doctorId:string,query:{status?:string;currency?:string;page?:number;pageSize?:number}){return this.listBankPayouts({doctorId,...query});}
+ async adminPayouts(query:{doctorId?:string;status?:string;currency?:string;page?:number;pageSize?:number}){return this.listPayouts(query);}
+ async adminBankPayouts(query:{doctorId?:string;status?:string;currency?:string;page?:number;pageSize?:number}){return this.listBankPayouts(query);}
+ private async listPayouts(query:{doctorId?:string;status?:string;currency?:string;page?:number;pageSize?:number}){
+  const page=Math.max(1,query.page??1),pageSize=Math.min(100,Math.max(1,query.pageSize??25));
+  const where:any={...(query.doctorId?{doctorId:query.doctorId}:{}),...(query.status?{status:query.status}:{}),...(query.currency?{currency:query.currency.toLowerCase()}:{})};
+  const [items,total]=await this.prisma.$transaction([this.prisma.doctorPayout.findMany({where,orderBy:{createdAt:'desc'},skip:(page-1)*pageSize,take:pageSize}),this.prisma.doctorPayout.count({where})]);
+  return {items,total,page,pageSize,pageCount:Math.ceil(total/pageSize)};
+ }
+ private async listBankPayouts(query:{doctorId?:string;status?:string;currency?:string;page?:number;pageSize?:number}){
+  const page=Math.max(1,query.page??1),pageSize=Math.min(100,Math.max(1,query.pageSize??25));
+  const where:any={...(query.doctorId?{doctorId:query.doctorId}:{}),...(query.status?{status:query.status}:{}),...(query.currency?{currency:query.currency.toLowerCase()}:{})};
+  const [items,total]=await this.prisma.$transaction([this.prisma.doctorBankPayout.findMany({where,orderBy:{createdAt:'desc'},skip:(page-1)*pageSize,take:pageSize}),this.prisma.doctorBankPayout.count({where})]);
+  return {items,total,page,pageSize,pageCount:Math.ceil(total/pageSize)};
+ }
+ async reconcilePayout(actorUserId:string,transactionId:string){
+  const tx=await this.prisma.transaction.findUnique({where:{id:transactionId},include:{appointment:true}});
+  if(!tx||!tx.providerTransactionId||!tx.appointment?.doctorId)throw new ConflictException('Transaction cannot be reconciled');
+  const remote:any=await this.stripe('payment_intents/'+tx.providerTransactionId+'?expand[]=latest_charge','GET'),transfer=remote?.latest_charge?.transfer;
+  if(!transfer?.id)throw new ConflictException('No transfer found on Stripe');
+  const payout=await this.prisma.doctorPayout.upsert({where:{transactionId:tx.id},create:{doctorId:tx.appointment.doctorId,transactionId:tx.id,provider:'stripe',providerTransferId:transfer.id,amount:Number(transfer.amount??0)/100,currency:String(transfer.currency??tx.currency).toLowerCase(),status:'TRANSFERRED'},update:{providerTransferId:transfer.id,status:'TRANSFERRED'}});
+  await this.prisma.auditLog.create({data:{actorUserId,action:'PAYOUT_RECONCILED',resourceType:'DoctorPayout',resourceId:payout.id,metadata:{transactionId:tx.id,transferId:transfer.id}}});
+  return {payout,transferId:transfer.id};
+ }
+ async reconcileBankPayout(actorUserId:string,payoutId:string){
+  const payout=await this.prisma.doctorBankPayout.findUnique({where:{id:payoutId},include:{doctor:true}});
+  if(!payout?.doctor.stripeAccountId)throw new ConflictException('Bank payout cannot be reconciled');
+  const remote:any=await this.stripe('payouts/'+payout.providerPayoutId,'GET',undefined,{'Stripe-Account':payout.doctor.stripeAccountId});
+  const status=remote.status==='paid'?'PAID':remote.status==='failed'?'FAILED':remote.status==='canceled'?'CANCELED':'PENDING';
+  const updated=await this.prisma.doctorBankPayout.update({where:{id:payout.id},data:{status,failureCode:remote.failure_code??null,failureMessage:remote.failure_message??null}});
+  await this.prisma.auditLog.create({data:{actorUserId,action:'BANK_PAYOUT_RECONCILED',resourceType:'DoctorBankPayout',resourceId:payout.id,metadata:{status}}});
+  return updated;
+ }
+
 }
