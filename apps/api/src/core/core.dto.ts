@@ -4,4 +4,5 @@ export class SubscribeDto { @IsUUID() planId!:string; @IsOptional() @IsString() 
 export class ReviewDto { @IsUUID() appointmentId!:string; @IsInt() @Min(1) @Max(5) rating!:number; @IsOptional() @IsString() @MinLength(2) comment?:string; }
 export class DisputeDto { @IsUUID() transactionId!:string; @IsString() @MinLength(3) reason!:string; @IsOptional() @IsString() details?:string; }
 export class NotificationDto { @IsString() title!:string; @IsString() body!:string; @IsOptional() data?:Record<string,unknown>; }
-export class VideoDto { @IsUUID() appointmentId!:string; }\nexport class ResolveDisputeDto { @IsIn(['REFUND','PARTIAL_REFUND','REJECT']) action!: 'REFUND'|'PARTIAL_REFUND'|'REJECT'; @IsOptional() @IsNumber({ maxDecimalPlaces: 2 }) @Min(0.01) amount?: number; @IsString() @MinLength(3) resolution!: string; }\n
+export class VideoDto { @IsUUID() appointmentId!:string; }
+export class ResolveDisputeDto { @IsIn(['REFUND','PARTIAL_REFUND','REJECT']) action!: 'REFUND'|'PARTIAL_REFUND'|'REJECT'; @IsOptional() @IsNumber({ maxDecimalPlaces: 2 }) @Min(0.01) amount?: number; @IsString() @MinLength(3) resolution!: string; }\n
