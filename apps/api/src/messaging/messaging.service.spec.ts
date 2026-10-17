@@ -9,7 +9,7 @@ describe('MessagingService authorization', () => {
     };
     const storage:any = {};
     const crypto:any = {};
-    const service = new MessagingService(prisma,crypto,storage);
+    const service = new MessagingService(prisma,crypto,storage,{} as any);
     await expect(service.initDocument('patient',{doctorId:'d',originalName:'report.pdf',mimeType:'application/pdf',sizeBytes:100} as any))
       .rejects.toBeInstanceOf(ForbiddenException);
   });
