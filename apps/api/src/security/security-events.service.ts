@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { SecurityEventSeverity, SecurityEventType } from '@prisma/client';
 
 export interface SecurityEventContext {
@@ -30,7 +31,7 @@ export class SecurityEventsService {
           ipAddress: context.ipAddress?.slice(0, 64),
           userAgent: context.userAgent?.slice(0, 512),
           requestId: context.requestId?.slice(0, 128),
-          metadata: context.metadata,
+          metadata: context.metadata as Prisma.InputJsonValue | undefined,
         },
       });
     } catch (error) {
