@@ -1,4 +1,5 @@
 import * as argon2 from 'argon2';
+jest.mock('argon2', () => ({ verify: jest.fn(), hash: jest.fn() }));
 import { UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 
@@ -6,7 +7,7 @@ describe('AuthService security', () => {
   it('locks an account after repeated invalid passwords', async()=>{
     const prisma:any={user:{findUnique:jest.fn().mockResolvedValue({id:'u',status:'ACTIVE',passwordHash:'hash',failedLoginCount:4,lockedUntil:null,roles:[]}),update:jest.fn()},refreshSession:{}};
     const service=new AuthService(prisma,{} as any,{} as any);
-    jest.spyOn(argon2,'verify').mockResolvedValue(false as never);
+    (argon2.verify as jest.Mock).mockResolvedValue(false);
     await expect(service.login({email:'a@b.com',password:'bad'} as any)).rejects.toBeInstanceOf(UnauthorizedException);
     expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({data:expect.objectContaining({lockedUntil:expect.any(Date)})}));
   });
@@ -45,7 +46,7 @@ describe('AuthService security', () => {
     };
     const config:any = { getOrThrow: jest.fn().mockReturnValue('mfa-key') };
     const service = new AuthService(prisma, {} as any, config);
-    jest.spyOn(argon2, 'verify').mockResolvedValue(true as never);
+    (argon2.verify as jest.Mock).mockResolvedValue(true);
     jest.spyOn(service as any, 'decryptSecret').mockReturnValue('secret');
     jest.spyOn(require('otplib').authenticator, 'verify').mockReturnValue(false);
 
