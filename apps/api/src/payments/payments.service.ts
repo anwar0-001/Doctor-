@@ -113,7 +113,6 @@ export class PaymentsService {
    } else if(txId && event.type==='payment_intent.succeeded'){await this.prisma.$transaction([this.prisma.transaction.update({where:{id:txId},data:{status:PaymentStatus.SUCCEEDED}}),this.prisma.appointment.updateMany({where:{id:obj.metadata.appointmentId,status:AppointmentStatus.PENDING},data:{status:AppointmentStatus.CONFIRMED}})]);}
     else if(txId && event.type==='payment_intent.payment_failed'){await this.prisma.$transaction([this.prisma.transaction.update({where:{id:txId},data:{status:PaymentStatus.FAILED}}),this.prisma.appointment.updateMany({where:{id:obj.metadata.appointmentId,status:AppointmentStatus.PENDING},data:{status:AppointmentStatus.CANCELLED,cancellationReason:'Payment failed',cancelledAt:new Date()}})]);}
     else if(txId && event.type==='payment_intent.canceled') await this.prisma.transaction.update({where:{id:txId},data:{status:PaymentStatus.FAILED}});
-   }
    await this.prisma.paymentWebhookEvent.update({where:{provider_eventId:{provider,eventId}},data:{processedAt:new Date(),status:'PROCESSED'}});
   }catch(e){await this.prisma.paymentWebhookEvent.update({where:{provider_eventId:{provider,eventId}},data:{status:'FAILED'}});throw e;}
   return {received:true};
