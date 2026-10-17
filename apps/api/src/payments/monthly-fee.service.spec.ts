@@ -9,7 +9,7 @@ describe('MonthlyFeeService', () => {
         {consultationAmount:100,refundAmount:0,doctorNet:80},
         {consultationAmount:200,refundAmount:50,doctorNet:160},
       ])},
-      doctorMonthlyFee:{upsert:jest.fn().mockResolvedValue({feeAmount:37.5})},
+      doctorMonthlyFee:{findUnique:jest.fn().mockResolvedValue(null),upsert:jest.fn().mockResolvedValue({feeAmount:37.5})},
     };
     const service=new MonthlyFeeService(prisma);
     const result=await service.calculate('doctor',new Date('2026-09-01'),new Date('2026-10-01'),'USD');
