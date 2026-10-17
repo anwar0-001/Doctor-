@@ -10,6 +10,7 @@ describe('CoreService security invariants', () => {
     doctorProfile:{update:jest.fn()},
     transaction:{findUnique:jest.fn(),update:jest.fn()},
     dispute:{findFirst:jest.fn(),create:jest.fn(),findUnique:jest.fn(),update:jest.fn()},
+    auditLog:{create:jest.fn()},
     notification:{create:jest.fn(),findMany:jest.fn(),findUnique:jest.fn(),update:jest.fn()},
     videoSession:{findUnique:jest.fn(),create:jest.fn()},
     $transaction:jest.fn(async (fn:any)=>fn(prisma)),
